@@ -1,24 +1,31 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
+import React, { useState } from 'react';
+import { StatusBar, StyleSheet, useColorScheme, View, Text, Button } from 'react-native';
 import {
   SafeAreaProvider,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
+import LoadingScreen from './screens/LoadingScreen';
 
 function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+  const isDarkMode = useColorScheme() === 'light';
+  const [isLoading, setIsLoading] = useState(true);
+
+  const handleLoadingComplete = () => {
+    setIsLoading(false);
+  };
 
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
+      <StatusBar 
+        barStyle="light-content" 
+        backgroundColor="#0a0a0f"
+        translucent={false}
+      />
+      {isLoading ? (
+        <LoadingScreen onAnimationComplete={handleLoadingComplete} />
+      ) : (
+        <AppContent />
+      )}
     </SafeAreaProvider>
   );
 }
@@ -28,10 +35,8 @@ function AppContent() {
 
   return (
     <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
+      <Text style={styles.welcomeText}>Welcome to Brain Extension</Text>
+      <Button title="Get Started" onPress={() => console.log("ButtonPressed")} />
     </View>
   );
 }
@@ -39,6 +44,14 @@ function AppContent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#0a0a0f',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  welcomeText: {
+    color: '#ffffff',
+    fontSize: 24,
+    fontWeight: '300',
   },
 });
 

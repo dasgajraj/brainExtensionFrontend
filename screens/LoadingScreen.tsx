@@ -12,9 +12,11 @@ const { width, height } = Dimensions.get('window');
 
 interface LoadingScreenProps {
   onAnimationComplete?: () => void;
+  theme?: 'light' | 'dark';
 }
 
-const LoadingScreen: React.FC<LoadingScreenProps> = ({ onAnimationComplete }) => {
+const LoadingScreen: React.FC<LoadingScreenProps> = ({ onAnimationComplete, theme = 'dark' }) => {
+  const isDark = theme === 'dark';
   const [currentPhase, setCurrentPhase] = useState(0);
   const phases = ['Data', 'Think', 'Create'];
   
@@ -213,9 +215,9 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ onAnimationComplete }) =>
   ];
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isDark ? styles.containerDark : styles.containerLight]}>
       {/* Background gradient effect */}
-      <View style={styles.backgroundGradient} />
+      <View style={[styles.backgroundGradient, isDark ? styles.bgDark : styles.bgLight]} />
       
       {/* Animated brain container */}
       <Animated.View
@@ -306,7 +308,7 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ onAnimationComplete }) =>
           },
         ]}
       >
-        <Text style={styles.title}>Brain</Text>
+        <Text style={[styles.title, isDark ? styles.titleDark : styles.titleLight]}>Brain</Text>
         <Text style={styles.titleExtension}>Extension</Text>
       </Animated.View>
 
@@ -322,7 +324,7 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ onAnimationComplete }) =>
       >
         <View style={styles.phaseIndicator}>
           <View style={styles.phaseDot} />
-          <Text style={styles.phaseText}>{phases[currentPhase]}</Text>
+          <Text style={[styles.phaseText, isDark ? styles.phaseTextDark : styles.phaseTextLight]}>{phases[currentPhase]}</Text>
           <View style={styles.phaseLineContainer}>
             <View style={styles.phaseLine} />
           </View>
@@ -394,17 +396,27 @@ const LoadingDot: React.FC<{ delay: number }> = ({ delay }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0f',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  containerDark: {
+    backgroundColor: '#0a0a0f',
+  },
+  containerLight: {
+    backgroundColor: '#f5f5f7',
   },
   backgroundGradient: {
     position: 'absolute',
     width: width * 2,
     height: height * 2,
     borderRadius: width,
-    backgroundColor: '#1a1a2e',
     opacity: 0.3,
+  },
+  bgDark: {
+    backgroundColor: '#1a1a2e',
+  },
+  bgLight: {
+    backgroundColor: '#e0e0e5',
   },
   brainContainer: {
     width: 150,
@@ -559,8 +571,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 42,
     fontWeight: '300',
-    color: '#ffffff',
     letterSpacing: 8,
+  },
+  titleDark: {
+    color: '#ffffff',
+  },
+  titleLight: {
+    color: '#1a1a2e',
   },
   titleExtension: {
     fontSize: 18,
@@ -588,9 +605,14 @@ const styles = StyleSheet.create({
   phaseText: {
     fontSize: 16,
     fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.8)',
     letterSpacing: 6,
     textTransform: 'uppercase',
+  },
+  phaseTextDark: {
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  phaseTextLight: {
+    color: 'rgba(26, 26, 46, 0.8)',
   },
   phaseLineContainer: {
     marginTop: 10,

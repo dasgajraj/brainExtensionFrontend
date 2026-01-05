@@ -41,7 +41,7 @@ function AppWrapper() {
     if (deviceTheme) {
       dispatch(setTheme(deviceTheme));
     }
-  }, []);
+  }, [deviceTheme, dispatch]);
 
   const handleLoadingComplete = () => {
     setIsLoading(false);

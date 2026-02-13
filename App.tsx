@@ -60,7 +60,7 @@ function App() {
       <StatusBar 
         barStyle={themeMode === 'dark' ? 'light-content' : 'dark-content'}
         backgroundColor={themeMode === 'dark' ? '#0a0a0f' : '#ffffff'}
-        translucent={false}
+        translucent={false} hidden
       />
       {isLoading ? (
         <LoadingScreen onAnimationComplete={handleLoadingComplete} theme={themeMode} />

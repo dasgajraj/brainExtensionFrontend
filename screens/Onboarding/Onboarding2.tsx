@@ -33,12 +33,12 @@ const Onboarding2: React.FC<Onboarding2Props> = ({ onNext, onSkip, theme = 'dark
   // Animation values
   const opacity = useSharedValue(0);
   const textY = useSharedValue(50);
-  
+
   // Wave animations
   const wave1 = useSharedValue(0);
   const wave2 = useSharedValue(0);
   const wave3 = useSharedValue(0);
-  
+
   // Cards stacking animation
   const cards = Array.from({ length: 5 }, () => ({
     translateY: useSharedValue(200),
@@ -46,7 +46,7 @@ const Onboarding2: React.FC<Onboarding2Props> = ({ onNext, onSkip, theme = 'dark
     scale: useSharedValue(0.8),
     opacity: useSharedValue(0),
   }));
-  
+
   // Connecting lines
   const lines = Array.from({ length: 6 }, () => ({
     scaleX: useSharedValue(0),
@@ -57,7 +57,7 @@ const Onboarding2: React.FC<Onboarding2Props> = ({ onNext, onSkip, theme = 'dark
     // Entrance
     opacity.value = withTiming(1, { duration: 800 });
     textY.value = withSpring(0, { damping: 15 });
-    
+
     // Waves
     wave1.value = withRepeat(
       withTiming(1, { duration: 3000, easing: Easing.inOut(Easing.ease) }),
@@ -80,7 +80,7 @@ const Onboarding2: React.FC<Onboarding2Props> = ({ onNext, onSkip, theme = 'dark
         true
       )
     );
-    
+
     // Cards stack with cascade
     cards.forEach((card, index) => {
       setTimeout(() => {
@@ -90,14 +90,14 @@ const Onboarding2: React.FC<Onboarding2Props> = ({ onNext, onSkip, theme = 'dark
         card.rotate.value = withSpring((index - 2) * 3, { damping: 15 });
       }, index * 150);
     });
-    
+
     // Lines draw
     setTimeout(() => {
       lines.forEach((line, index) => {
         setTimeout(() => {
-          line.scaleX.value = withTiming(1, { 
-            duration: 600, 
-            easing: Easing.out(Easing.cubic) 
+          line.scaleX.value = withTiming(1, {
+            duration: 600,
+            easing: Easing.out(Easing.cubic),
           });
           line.opacity.value = withTiming(0.6, { duration: 600 });
         }, index * 100);
@@ -118,7 +118,7 @@ const Onboarding2: React.FC<Onboarding2Props> = ({ onNext, onSkip, theme = 'dark
       opacity: interpolate(wave1.value, [0, 1], [0.5, 0.8]),
     };
   });
-  
+
   const wave2Style = useAnimatedStyle(() => {
     const translateY = interpolate(wave2.value, [0, 1], [0, -15]);
     const scale = interpolate(wave2.value, [0, 1], [1, 1.03]);
@@ -127,7 +127,7 @@ const Onboarding2: React.FC<Onboarding2Props> = ({ onNext, onSkip, theme = 'dark
       opacity: interpolate(wave2.value, [0, 1], [0.4, 0.7]),
     };
   });
-  
+
   const wave3Style = useAnimatedStyle(() => {
     const translateY = interpolate(wave3.value, [0, 1], [0, 10]);
     const scale = interpolate(wave3.value, [0, 1], [1, 1.04]);
@@ -141,7 +141,6 @@ const Onboarding2: React.FC<Onboarding2Props> = ({ onNext, onSkip, theme = 'dark
     ? ['#0a0517', '#1a0f2e', '#2d1854'] 
     : ['#faf5ff', '#f3e8ff', '#e9d5ff'];
   
-  const cardIcons = ['📝', '🎯', '💼', '📚', '⚡'];
   const cardColors = ['#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe', '#ede9fe'];
 
   return (
@@ -163,7 +162,7 @@ const Onboarding2: React.FC<Onboarding2Props> = ({ onNext, onSkip, theme = 'dark
             transform: [{ scaleX: line.scaleX.value }],
             opacity: line.opacity.value,
           }));
-          
+
           return (
             <Animated.View
               key={`line-${index}`}
@@ -175,7 +174,7 @@ const Onboarding2: React.FC<Onboarding2Props> = ({ onNext, onSkip, theme = 'dark
             />
           );
         })}
-        
+
         {/* Cards */}
         {cards.map((card, index) => {
           const cardStyle = useAnimatedStyle(() => ({
@@ -187,26 +186,37 @@ const Onboarding2: React.FC<Onboarding2Props> = ({ onNext, onSkip, theme = 'dark
             opacity: card.opacity.value,
             zIndex: 5 - index,
           }));
-          
+
           return (
             <Animated.View
               key={`card-${index}`}
               style={[
                 styles.card,
-                { 
+                {
                   backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)',
                   top: 20 + index * 50,
                 },
                 cardStyle,
               ]}
             >
-              <View 
+              <View
                 style={[
-                  styles.cardIcon, 
-                  { backgroundColor: `${cardColors[index]}30` }
+                  styles.cardIcon,
+                  { backgroundColor: `${cardColors[index]}30` },
                 ]}
               >
-                <Text style={styles.cardIconText}>{cardIcons[index]}</Text>
+                <View
+                  style={[
+                    styles.cardIconDot,
+                    { backgroundColor: isDark ? '#c4b5fd' : '#7c3aed' },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.cardIconLine,
+                    { backgroundColor: isDark ? '#c4b5fd' : '#7c3aed' },
+                  ]}
+                />
               </View>
               <View style={styles.cardContent}>
                 <View style={[styles.cardLine, { backgroundColor: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)' }]} />
@@ -323,8 +333,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 16,
   },
-  cardIconText: {
-    fontSize: 26,
+  cardIconDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginBottom: 6,
+  },
+  cardIconLine: {
+    width: 22,
+    height: 2,
+    borderRadius: 1,
   },
   cardContent: {
     flex: 1,

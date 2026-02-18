@@ -8,6 +8,7 @@ import { setTheme } from './redux/Action';
 import LoadingScreen from './screens/LoadingScreen';
 import HomeScreen from './screens/HomeScreen';
 import OnboardingContainer from './screens/Onboarding';
+import AuthContainer from './screens/Auth';
 
 const ONBOARDING_KEY = '@has_seen_onboarding';
 
@@ -18,6 +19,7 @@ function App() {
   const deviceTheme = useColorScheme();
   const themeMode = useSelector((state: RootState) => state.theme.mode);
   const isHydrated = useSelector((state: RootState) => state._persist?.rehydrated);
+  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
 
   useEffect(() => {
     if (isHydrated && deviceTheme) {
@@ -66,6 +68,8 @@ function App() {
         <LoadingScreen onAnimationComplete={handleLoadingComplete} theme={themeMode} />
       ) : showOnboarding ? (
         <OnboardingContainer onComplete={handleOnboardingComplete} theme={themeMode} />
+      ) : !isAuthenticated ? (
+        <AuthContainer />
       ) : (
         <HomeScreen />
       )}

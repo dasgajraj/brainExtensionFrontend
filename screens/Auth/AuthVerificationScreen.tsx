@@ -28,6 +28,7 @@ import { AppDispatch } from '../../redux/Store';
 import getTokens from '../../theme/tokens';
 import {
   verifyOtpThunk,
+  verifyRequestThunk,
   forgotPasswordThunk,
   setFlowStep,
   clearError,
@@ -48,20 +49,29 @@ const OTP_LENGTH = 6;
 const AuthVerificationScreen: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const mode = useSelector((s: RootState) => s.theme.mode);
-  const { status, errorMessage, tempUserIdentifier } = useSelector(
+  const { status, errorMessage, tempUserIdentifier, verifyPurpose } = useSelector(
     (s: RootState) => s.auth
   );
   const t = getTokens(mode);
 
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [focusedIndex, setFocusedIndex] = useState(0);
-  const [resendCooldown, setResendCooldown] = useState(30);
+  const [resendCooldown, setResendCooldown] = useState(0); // starts at 0; set to 30 after first send
   const inputRefs = useRef<(TextInput | null)[]>(Array(OTP_LENGTH).fill(null));
 
   // Shake animation for error state
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
   const isLoading = status === 'loading';
+
+  // ── Auto-send code on mount (email verification flow only) ───────────────
+  useEffect(() => {
+    if (verifyPurpose === 'email') {
+      dispatch(verifyRequestThunk());
+      setResendCooldown(30);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Countdown for resend code ─────────────────────────────────────────────
   useEffect(() => {
@@ -128,14 +138,18 @@ const AuthVerificationScreen: React.FC = () => {
     setDigits(Array(OTP_LENGTH).fill(''));
     inputRefs.current[0]?.focus();
     setResendCooldown(30);
-    dispatch(forgotPasswordThunk({ email: tempUserIdentifier }));
+    if (verifyPurpose === 'email') {
+      dispatch(verifyRequestThunk());
+    } else {
+      dispatch(forgotPasswordThunk({ email: tempUserIdentifier }));
+    }
   };
 
   return (
     <AuthLayout
-      title="Verify Code"
-      subtitle={`Enter the 6-digit code sent to\n${tempUserIdentifier || 'your email'}.`}
-      onBack={() => dispatch(setFlowStep('forgotPassword'))}
+      title="Verify Email"
+      subtitle={`A 6-digit code was sent to\n${tempUserIdentifier || 'your email'}.`}
+      onBack={() => dispatch(setFlowStep(verifyPurpose === 'email' ? 'signup' : 'forgotPassword'))}
       scrollable={false}
     >
       {/* Error message */}
@@ -229,18 +243,6 @@ const AuthVerificationScreen: React.FC = () => {
           </TouchableOpacity>
         )}
       </View>
-
-      {/* Dev hint */}
-      <Text
-        style={{
-          color: t.text.muted,
-          fontSize: t.typography.caption,
-          textAlign: 'center',
-          marginTop: t.spacing.xl,
-        }}
-      >
-        (Mock: use code 123456)
-      </Text>
     </AuthLayout>
   );
 };

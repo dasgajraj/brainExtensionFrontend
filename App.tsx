@@ -4,7 +4,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RootState } from './redux/RootReducer';
+import { AppDispatch } from './redux/Store';
 import { setTheme } from './redux/Action';
+import { runBootstrap } from './app/bootstrap';
 import LoadingScreen from './screens/LoadingScreen';
 import HomeScreen from './screens/HomeScreen';
 import OnboardingContainer from './screens/Onboarding';
@@ -13,19 +15,43 @@ import AuthContainer from './screens/Auth';
 const ONBOARDING_KEY = '@has_seen_onboarding';
 
 function App() {
-  const [isLoading, setIsLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const dispatch = useDispatch();
+  /**
+   * Two independent conditions must both be true before we hide the
+   * LoadingScreen:
+   *   1. animationDone  — the LoadingScreen's animation sequence finished
+   *   2. backendReady   — bootstrapThunk completed (health check + session restore)
+   *
+   * This ensures the backend is always awake before the user can interact
+   * with the auth screens, even on a cold-start that takes several seconds.
+   */
+  const [animationDone, setAnimationDone] = useState(false);
+
+  const dispatch = useDispatch<AppDispatch>();
   const deviceTheme = useColorScheme();
   const themeMode = useSelector((state: RootState) => state.theme.mode);
-  const isHydrated = useSelector((state: RootState) => state._persist?.rehydrated);
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  const backendReady = useSelector((state: RootState) => state.auth.backendReady);
+  const authStatus = useSelector((state: RootState) => state.auth.status);
 
+  // Stay on loading screen until the animation finishes AND bootstrap has
+  // either succeeded (backendReady) or permanently failed (status='error').
+  // Without the 'error' escape hatch the app would be stuck forever on a
+  // cold start where the backend never responds.
+  const bootstrapSettled = backendReady || authStatus === 'error';
+  const isLoading = !animationDone || !bootstrapSettled;
+
+  // Apply system theme preference (ignore 'unspecified' which has no direct mapping)
   useEffect(() => {
-    if (isHydrated && deviceTheme) {
+    if (deviceTheme === 'light' || deviceTheme === 'dark') {
       dispatch(setTheme(deviceTheme));
     }
-  }, [isHydrated, deviceTheme, dispatch]);
+  }, [deviceTheme, dispatch]);
+
+  // Run bootstrap on mount — health check + optional session restore
+  useEffect(() => {
+    runBootstrap(dispatch);
+  }, [dispatch]);
 
   useEffect(() => {
     checkOnboardingStatus();
@@ -35,7 +61,6 @@ function App() {
     try {
       const hasSeenOnboarding = await AsyncStorage.getItem(ONBOARDING_KEY);
       if (hasSeenOnboarding === null) {
-        // First time user
         setShowOnboarding(true);
       }
     } catch (error) {
@@ -44,7 +69,7 @@ function App() {
   };
 
   const handleLoadingComplete = () => {
-    setIsLoading(false);
+    setAnimationDone(true);
   };
 
   const handleOnboardingComplete = async () => {

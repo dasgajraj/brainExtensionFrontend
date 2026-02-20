@@ -14,6 +14,7 @@
 
 import axios from 'axios';
 import httpClient, { normaliseAxiosError, BASE_URL } from './httpClient';
+import { BRAIN_PIN } from '@env';
 import type {
   SignUpRequest,
   SignUpResponse,
@@ -26,6 +27,10 @@ import type {
   VerifyRequestPayload,
   VerifyConfirmPayload,
   VerifyApiResponse,
+  ForgotPasswordRequest,
+  ForgotPasswordResponse,
+  ResetPasswordRequest,
+  ResetPasswordResponse,
 } from '../types/auth.types';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -119,6 +124,57 @@ export async function apiVerifyConfirm(
     const response = await httpClient.post<VerifyApiResponse>(
       '/auth/verify/confirm',
       payload,
+    );
+    return response.data;
+  } catch (error) {
+    throw normaliseAxiosError(error);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /auth/forgot-password  — request a password reset email
+// No auth token required (user is logged out)
+// SECURITY: Always show generic success — never reveal if email exists
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function apiForgotPassword(
+  payload: ForgotPasswordRequest,
+): Promise<ForgotPasswordResponse> {
+  try {
+    // Uses raw axios — user is unauthenticated at this point; no Bearer needed
+    const response = await axios.post<ForgotPasswordResponse>(
+      `${BASE_URL}/auth/forgot-password`,
+      payload,
+      { headers: { 'Content-Type': 'application/json', Accept: 'application/json' } },
+    );
+    return response.data;
+  } catch (error) {
+    throw normaliseAxiosError(error);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PATCH /auth/reset-password/:token
+// token → extracted from deep link (single-use, backend-generated)
+// x-brain-pin header → static PIN from .env (BRAIN_PIN); NEVER logged
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function apiResetPassword(
+  token: string,
+  payload: ResetPasswordRequest,
+): Promise<ResetPasswordResponse> {
+  try {
+    // Uses raw axios with explicit headers — token is path param, NOT a Bearer
+    const response = await axios.patch<ResetPasswordResponse>(
+      `${BASE_URL}/auth/reset-password/${encodeURIComponent(token)}`,
+      payload,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'x-brain-pin': BRAIN_PIN, // static PIN from .env — never hardcoded
+        },
+      },
     );
     return response.data;
   } catch (error) {

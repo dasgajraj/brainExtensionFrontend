@@ -43,6 +43,9 @@ const initialState: AuthState = {
   tempUserIdentifier: '',
   backendReady: false,
   verifyPurpose: 'email',
+  resetToken: null,
+  resetStatus: 'idle',
+  resetError: null,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -122,12 +125,39 @@ const authSliceDefinition = createSlice({
       state.flowStep = 'login';
       state.tempUserIdentifier = '';
       state.errorMessage = null;
+      // Reset-token is in-memory only — always wipe on sign-out
+      state.resetToken = null;
+      state.resetStatus = 'idle';
+      state.resetError = null;
       // backendReady stays true — the server is still up
     },
 
     /** Mark the backend as reachable (called after a successful /health check) */
     setBackendReady(state, action: PayloadAction<boolean>) {
       state.backendReady = action.payload;
+    },
+
+    /**
+     * Store the single-use reset token received from the deep link.
+     * MUST remain in-memory only — never written to AsyncStorage.
+     * Calling this also sets flowStep = 'resetPassword' so the router
+     * immediately shows the correct screen.
+     */
+    setResetToken(state, action: PayloadAction<string>) {
+      state.resetToken = action.payload;
+      state.resetStatus = 'idle';
+      state.resetError = null;
+      state.flowStep = 'resetPassword';
+    },
+
+    /**
+     * Erase the reset token from memory after use.
+     * Called on successful reset, on error, and on logout.
+     */
+    clearResetToken(state) {
+      state.resetToken = null;
+      state.resetStatus = 'idle';
+      state.resetError = null;
     },
   },
 
@@ -238,19 +268,20 @@ const authSliceDefinition = createSlice({
       });
 
     // ── forgotPasswordThunk ───────────────────────────────────────────────────
+    // Uses resetStatus/resetError (independent sub-flow — main status untouched)
     builder
       .addCase(forgotPasswordThunk.pending, state => {
-        state.status = 'loading';
-        state.errorMessage = null;
+        state.resetStatus = 'loading';
+        state.resetError = null;
       })
       .addCase(forgotPasswordThunk.fulfilled, state => {
-        state.status = 'success';
-        state.verifyPurpose = 'forgotPassword';
-        state.flowStep = 'verify';
+        // Backend sent the email — UI shows generic success; no navigation here.
+        // Navigation happens only when the deep link arrives (setResetToken).
+        state.resetStatus = 'success';
       })
       .addCase(forgotPasswordThunk.rejected, (state, action) => {
-        state.status = 'error';
-        state.errorMessage = (action.payload as string) ?? 'Request failed.';
+        state.resetStatus = 'error';
+        state.resetError = (action.payload as string) ?? 'Could not send reset link.';
       });
 
     // ── verifyRequestThunk ────────────────────────────────────────────────────
@@ -292,19 +323,21 @@ const authSliceDefinition = createSlice({
       });
 
     // ── resetPasswordThunk ────────────────────────────────────────────────────
+    // Uses resetStatus/resetError (independent sub-flow — main status untouched)
     builder
       .addCase(resetPasswordThunk.pending, state => {
-        state.status = 'loading';
-        state.errorMessage = null;
+        state.resetStatus = 'loading';
+        state.resetError = null;
       })
       .addCase(resetPasswordThunk.fulfilled, state => {
-        state.status = 'success';
-        state.flowStep = 'login';
-        state.tempUserIdentifier = '';
+        state.resetStatus = 'success';
+        state.resetToken = null;     // single-use token consumed — wipe it
+        // flowStep stays 'resetPassword' so the screen can show the success UI.
+        // The screen dispatches setFlowStep('login') after the success message.
       })
       .addCase(resetPasswordThunk.rejected, (state, action) => {
-        state.status = 'error';
-        state.errorMessage = (action.payload as string) ?? 'Reset failed.';
+        state.resetStatus = 'error';
+        state.resetError = (action.payload as string) ?? 'Password reset failed.';
       });
   },
 });
@@ -321,6 +354,8 @@ export const {
   setTokens,
   signOut,
   setBackendReady,
+  setResetToken,
+  clearResetToken,
 } = authSliceDefinition.actions;
 
 export default authSliceDefinition.reducer;

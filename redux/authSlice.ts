@@ -22,6 +22,8 @@ export {
   setTokens,
   signOut,
   setBackendReady,
+  setResetToken,
+  clearResetToken,
   default,
 } from '../store/auth/auth.slice';
 
@@ -51,4 +53,7 @@ export {
   selectTempIdentifier,
   selectBackendReady,
   selectDisplayName,
+  selectResetToken,
+  selectResetStatus,
+  selectResetError,
 } from '../store/auth/auth.selectors';

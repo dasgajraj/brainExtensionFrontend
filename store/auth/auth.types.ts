@@ -92,4 +92,20 @@ export interface AuthState {
    * 'forgotPassword' → stub until reset-password API is provided
    */
   verifyPurpose: VerifyPurpose;
+
+  // ── Password-reset deep-link token ──────────────────────────────────────────
+  /**
+   * Single-use reset token extracted from the deep link.
+   * MUST remain in-memory only — never persisted to AsyncStorage.
+   * Cleared after a successful password reset or on logout.
+   */
+  resetToken: string | null;
+
+  /** Lifecycle of the reset-password sub-flow (separate from main `status`
+   *  so the ForgotPasswordScreen and the ResetPasswordScreen can track
+   *  their own loading/error states independently of each other). */
+  resetStatus: 'idle' | 'loading' | 'success' | 'error';
+
+  /** Human-readable UI-safe error for the reset-password sub-flow. */
+  resetError: string | null;
 }

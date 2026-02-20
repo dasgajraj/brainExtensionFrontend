@@ -7,6 +7,7 @@ import { RootState } from './redux/RootReducer';
 import { AppDispatch } from './redux/Store';
 import { setTheme } from './redux/Action';
 import { runBootstrap } from './app/bootstrap';
+import { setupDeepLinkingListeners } from './navigation/deepLinking';
 import LoadingScreen from './screens/LoadingScreen';
 import HomeScreen from './screens/HomeScreen';
 import OnboardingContainer from './screens/Onboarding';
@@ -51,6 +52,11 @@ function App() {
   // Run bootstrap on mount — health check + optional session restore
   useEffect(() => {
     runBootstrap(dispatch);
+  }, [dispatch]);
+
+  // Register deep-link listeners (cold-start getInitialURL + foreground events)
+  useEffect(() => {
+    return setupDeepLinkingListeners(dispatch);
   }, [dispatch]);
 
   useEffect(() => {

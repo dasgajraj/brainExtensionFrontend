@@ -10,14 +10,15 @@
  *  - No hardcoded strings → all messages come from the API or constants below
  *
  * ─── API coverage ────────────────────────────────────────────────────────────
- * REAL API:  POST /auth/signup     → signUpThunk
- *            POST /auth/login      → loginThunk
- *            POST /auth/logout     → logoutThunk
- *            POST /auth/refresh    → bootstrapThunk (session restore)
- *            GET  /health          → bootstrapThunk (backend wake-up)
- *
- * STUB:      forgotPasswordThunk / verifyOtpThunk / resetPasswordThunk
- *            (No API endpoint provided; marked for future integration)
+ * REAL API:  POST  /auth/signup              → signUpThunk
+ *            POST  /auth/login               → loginThunk
+ *            POST  /auth/logout              → logoutThunk
+ *            POST  /auth/refresh             → bootstrapThunk (session restore)
+ *            GET   /health                   → bootstrapThunk (backend wake-up)
+ *            POST  /auth/forgot-password     → forgotPasswordThunk
+ *            POST  /auth/verify/request      → verifyRequestThunk
+ *            POST  /auth/verify/confirm      → verifyOtpThunk
+ *            PATCH /auth/reset-password/:tok → resetPasswordThunk
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -158,15 +159,14 @@ export const logoutThunk = createAsyncThunk<void, void>(
 
 // ─────────────────────────────────────────────────────────────────────────────
 // forgotPasswordThunk
-// ⚠️  STUB — no API endpoint provided.
-//     Replace the body of the try{} block when the backend is ready.
+// POST /auth/forgot-password — real API
+// No auth token — user is unauthenticated at this point.
+// SECURITY: UI always shows a generic success message regardless of outcome.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface ForgotPasswordThunkPayload {
   email: string;
 }
-
-const FORGOT_PASSWORD_STUB_DELAY_MS = 1_200;
 
 export const forgotPasswordThunk = createAsyncThunk<
   void,
@@ -175,17 +175,10 @@ export const forgotPasswordThunk = createAsyncThunk<
   'auth/forgotPassword',
   async (payload, { rejectWithValue }) => {
     try {
-      // ── STUB — replace with: await authService.forgotPassword(payload) ──
-      await new Promise<void>(resolve =>
-        setTimeout(resolve, FORGOT_PASSWORD_STUB_DELAY_MS),
-      );
-      if (payload.email.endsWith('@notfound.com')) {
-        return rejectWithValue('No account found with that email.');
-      }
-      // ── END STUB ──────────────────────────────────────────────────────────
+      await authService.requestPasswordReset(payload.email);
     } catch (error) {
       return rejectWithValue(
-        extractMessage(error, 'Could not send reset code. Try again.'),
+        extractMessage(error, 'Could not send reset link. Please try again.'),
       );
     }
   },
@@ -220,8 +213,9 @@ export const verifyRequestThunk = createAsyncThunk<void, void>(
 
 // ─────────────────────────────────────────────────────────────────────────────
 // verifyOtpThunk
-// POST /auth/verify/confirm  — real API (email verification)
-// ⚠️ forgotPassword purpose stays a stub until reset-password API is provided
+// POST /auth/verify/confirm  — real API
+// Confirms the 6-digit OTP sent after signup.
+// Forgot-password now uses deep links; this thunk is email-verification only.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface VerifyOtpThunkPayload {
@@ -229,26 +223,11 @@ export interface VerifyOtpThunkPayload {
   otp: string;
 }
 
-const VERIFY_OTP_STUB_DELAY_MS = 900;
-const MOCK_VALID_OTP = '123456';
-
 export const verifyOtpThunk = createAsyncThunk<void, VerifyOtpThunkPayload>(
   'auth/verifyOtp',
-  async (payload, { getState, rejectWithValue }) => {
-    const { auth } = getState() as { auth: { verifyPurpose: string } };
+  async (payload, { rejectWithValue }) => {
     try {
-      if (auth.verifyPurpose === 'email') {
-        // Real API: POST /auth/verify/confirm
-        await authService.confirmEmailVerification(payload.otp);
-      } else {
-        // ⚠️ STUB (forgotPassword) — no reset-password OTP API provided yet
-        await new Promise<void>(resolve =>
-          setTimeout(resolve, VERIFY_OTP_STUB_DELAY_MS),
-        );
-        if (payload.otp !== MOCK_VALID_OTP) {
-          return rejectWithValue('Invalid or expired code. Please try again.');
-        }
-      }
+      await authService.confirmEmailVerification(payload.otp);
     } catch (error) {
       return rejectWithValue(
         extractMessage(error, 'Verification failed. Try again.'),
@@ -259,38 +238,35 @@ export const verifyOtpThunk = createAsyncThunk<void, VerifyOtpThunkPayload>(
 
 // ─────────────────────────────────────────────────────────────────────────────
 // resetPasswordThunk
-// ⚠️  STUB — no API endpoint provided.
+// PATCH /auth/reset-password/:token — real API
+// token is sourced from state.auth.resetToken (set by the deep link handler).
+// x-brain-pin is attached by apiResetPassword in the API layer.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface ResetPasswordThunkPayload {
-  identifier: string;
-  otp: string;
+  /** New password chosen by the user */
   newPassword: string;
 }
-
-const RESET_PASSWORD_STUB_DELAY_MS = 1_200;
 
 export const resetPasswordThunk = createAsyncThunk<
   void,
   ResetPasswordThunkPayload
 >(
   'auth/resetPassword',
-  async (payload, { rejectWithValue }) => {
-    try {
-      // ── STUB — replace with: await authService.resetPassword(payload) ──
-      await new Promise<void>(resolve =>
-        setTimeout(resolve, RESET_PASSWORD_STUB_DELAY_MS),
+  async (payload, { getState, rejectWithValue }) => {
+    const { auth } = getState() as { auth: { resetToken: string | null } };
+
+    if (!auth.resetToken) {
+      return rejectWithValue(
+        'Reset session expired. Please request a new reset link.',
       );
-      if (payload.newPassword.length < 8) {
-        return rejectWithValue('Password must be at least 8 characters.');
-      }
-      if (payload.otp !== MOCK_VALID_OTP) {
-        return rejectWithValue('Session expired. Please restart the flow.');
-      }
-      // ── END STUB ──────────────────────────────────────────────────────────
+    }
+
+    try {
+      await authService.resetPassword(auth.resetToken, payload.newPassword);
     } catch (error) {
       return rejectWithValue(
-        extractMessage(error, 'Password reset failed. Try again.'),
+        extractMessage(error, 'Password reset failed. Please try again.'),
       );
     }
   },

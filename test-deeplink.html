@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Brain Extension — Deep Link Test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        background: #0a0a0f;
+        color: #ffffff;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        gap: 24px;
+      }
+      h1 { font-size: 22px; font-weight: 700; text-align: center; }
+      p  { font-size: 14px; color: #888; text-align: center; line-height: 1.6; }
+      .btn {
+        display: block;
+        width: 100%;
+        max-width: 340px;
+        padding: 16px;
+        border-radius: 12px;
+        font-size: 15px;
+        font-weight: 600;
+        text-align: center;
+        text-decoration: none;
+        cursor: pointer;
+        border: none;
+      }
+      .primary   { background: #ffffff; color: #0a0a0f; }
+      .secondary { background: #1a1a2e; color: #ffffff; border: 1px solid #333; margin-top: 8px; }
+      .token-box {
+        background: #111;
+        border: 1px solid #333;
+        border-radius: 10px;
+        padding: 12px 16px;
+        width: 100%;
+        max-width: 340px;
+        font-size: 12px;
+        color: #aaa;
+        word-break: break-all;
+        line-height: 1.6;
+      }
+      label { font-size: 12px; color: #666; margin-bottom: 4px; display: block; }
+      input[type=text] {
+        width: 100%;
+        max-width: 340px;
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid #333;
+        background: #111;
+        color: #fff;
+        font-size: 13px;
+      }
+      #status {
+        font-size: 13px;
+        color: #4ade80;
+        text-align: center;
+        min-height: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🧠 Brain Extension<br>Deep Link Tester</h1>
+
+    <p>Enter a reset token (from backend logs or email)<br>then tap the button to open the app.</p>
+
+    <div style="width:100%;max-width:340px">
+      <label for="tokenInput">Reset Token</label>
+      <input
+        type="text"
+        id="tokenInput"
+        placeholder="paste token here"
+        value="b1b62ec1bfc92ad75e5597d0f0ac1099c5d47eab3c613be6b9c2f2b8c38286b9"
+      />
+    </div>
+
+    <div style="width:100%;max-width:340px">
+      <a id="openAppBtn" class="btn primary" onclick="openApp(); return false;" href="#">
+        Open Brain Extension App
+      </a>
+      <a id="fallbackBtn" class="btn secondary" href="#">
+        Manual link (if auto-open fails)
+      </a>
+    </div>
+
+    <div class="token-box">
+      <strong>Intent URI (Android Chrome):</strong><br>
+      <span id="intentDisplay">—</span>
+    </div>
+
+    <div id="status"></div>
+
+    <script>
+      var PACKAGE = 'com.brainextensionfrontend';
+      var BRIDGE  = 'https://brain-extension-exng.onrender.com/auth/reset-password-bridge';
+
+      function buildUrls(token) {
+        token = token.trim();
+        var custom  = 'brainextension://auth/reset-password/' + token;
+        var https   = BRIDGE + '?token=' + encodeURIComponent(token);
+        var intent  = 'intent://auth/reset-password/' + token
+          + '#Intent'
+          + ';scheme=brainextension'
+          + ';package=' + PACKAGE
+          + ';S.browser_fallback_url=' + encodeURIComponent(https)
+          + ';end';
+        return { custom: custom, https: https, intent: intent };
+      }
+
+      function refreshDisplay() {
+        var token = document.getElementById('tokenInput').value.trim();
+        var urls  = buildUrls(token);
+        document.getElementById('intentDisplay').textContent = urls.intent;
+        document.getElementById('fallbackBtn').href = urls.custom;
+      }
+
+      document.getElementById('tokenInput').addEventListener('input', refreshDisplay);
+      refreshDisplay();
+
+      function openApp() {
+        var token  = document.getElementById('tokenInput').value.trim();
+        if (!token) { setStatus('Paste a token first.', '#f87171'); return; }
+        var urls   = buildUrls(token);
+        var status = document.getElementById('status');
+
+        var isAndroid = /Android/i.test(navigator.userAgent);
+        var url = isAndroid ? urls.intent : urls.custom;
+
+        setStatus('Opening app…', '#facc15');
+        try {
+          window.location.replace(url);
+          setTimeout(function() {
+            setStatus('If the app did not open, tap "Manual link" below.', '#888');
+          }, 1500);
+        } catch(e) {
+          setStatus('Error: ' + e.message, '#f87171');
+        }
+      }
+
+      function setStatus(msg, color) {
+        var el = document.getElementById('status');
+        el.textContent = msg;
+        el.style.color = color || '#4ade80';
+      }
+    </script>
+  </body>
+</html>

@@ -15,7 +15,7 @@
  *  - Throws NormalisedError on failures (already normalised by the API layer)
  */
 
-import { apiSignUp, apiLogin, apiLogout, apiRefresh, apiVerifyRequest, apiVerifyConfirm } from '../api/auth.api';
+import { apiSignUp, apiLogin, apiLogout, apiRefresh, apiVerifyRequest, apiVerifyConfirm, apiForgotPassword, apiResetPassword } from '../api/auth.api';
 import { tokenService } from './token.service';
 import type { SignUpRequest, LoginRequest } from '../types/auth.types';
 import type { User } from '../types/user.types';
@@ -180,6 +180,31 @@ export async function confirmEmailVerification(token: string): Promise<void> {
   await apiVerifyConfirm({ token });
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// requestPasswordReset / resetPassword
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fires POST /auth/forgot-password.
+ * Backend sends a reset link regardless of whether the email exists.
+ * Callers MUST display a generic success message — never reveal existence.
+ */
+export async function requestPasswordReset(email: string): Promise<void> {
+  await apiForgotPassword({ email });
+}
+
+/**
+ * Fires PATCH /auth/reset-password/:token.
+ * `token` is the single-use deep-link path variable — NEVER persisted.
+ * Attaches the x-brain-pin header via API layer (sourced from .env).
+ */
+export async function resetPassword(
+  resetToken: string,
+  newPassword: string,
+): Promise<void> {
+  await apiResetPassword(resetToken, { password: newPassword });
+}
+
 export const authService = {
   signUp,
   login,
@@ -188,4 +213,6 @@ export const authService = {
   restoreSession,
   requestEmailVerification,
   confirmEmailVerification,
+  requestPasswordReset,
+  resetPassword,
 };

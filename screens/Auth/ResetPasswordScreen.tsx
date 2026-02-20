@@ -2,11 +2,15 @@
  * screens/Auth/ResetPasswordScreen.tsx
  *
  * Final step in the forgot-password flow.
- * User sets a new password with their OTP as a session token.
+ * Reached only via a deep link: brainextension://auth/reset-password/<TOKEN>
  *
- * Flow: dispatches resetPasswordThunk →
- *       on success: slice transitions flowStep back to 'login' (with a brief
- *       success animation shown here before yielding to LoginScreen).
+ * Flow: deep link → setResetToken(token) stored in Redux (in-memory)
+ *       → this screen reads resetToken from state
+ *       → user enters new password → PATCH /auth/reset-password/:token
+ *       → on success: slice clears resetToken + moves flowStep → 'login'
+ *
+ * Guard: if resetToken is null (user navigated here without a link) the
+ * screen immediately redirects to login via a useEffect.
  *
  * Theme: all colours/spacing sourced from getTokens(mode).
  */
@@ -23,7 +27,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/RootReducer';
 import { AppDispatch } from '../../redux/Store';
 import getTokens from '../../theme/tokens';
-import { resetPasswordThunk, clearError } from '../../redux/authSlice';
+import { resetPasswordThunk, setFlowStep } from '../../redux/authSlice';
 import AuthLayout from '../../components/auth/AuthLayout';
 import AuthPasswordField from '../../components/auth/AuthPasswordField';
 import AuthButton from '../../components/auth/AuthButton';
@@ -64,8 +68,8 @@ const STRENGTH_LABELS: Record<StrengthLevel, string> = {
 const ResetPasswordScreen: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const mode = useSelector((s: RootState) => s.theme.mode);
-  const { status, errorMessage, tempUserIdentifier } = useSelector(
-    (s: RootState) => s.auth
+  const { resetToken, resetStatus, resetError } = useSelector(
+    (s: RootState) => s.auth,
   );
   const t = getTokens(mode);
 
@@ -73,15 +77,37 @@ const ResetPasswordScreen: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState<{ new?: string; confirm?: string }>({});
 
+  // Guard: if we arrive here without a reset token AND the reset hasn't just
+  // completed successfully, bounce to login. Checking resetStatus prevents the
+  // guard from firing immediately after success (token is wiped on success).
+  useEffect(() => {
+    if (!resetToken && resetStatus !== 'success') {
+      dispatch(setFlowStep('login'));
+    }
+  }, [resetToken, resetStatus, dispatch]);
+
+  // Auto-navigate to login 2.5 s after a successful reset
+  useEffect(() => {
+    if (resetStatus !== 'success') return;
+    const timer = setTimeout(() => {
+      dispatch(setFlowStep('login'));
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [resetStatus, dispatch]);
+
   // Success pulse animation
   const successAnim = useRef(new Animated.Value(0)).current;
-  const isSuccess = status === 'success';
-  const isLoading = status === 'loading';
+  const isSuccess = resetStatus === 'success';
+  const isLoading = resetStatus === 'loading';
 
   useEffect(() => {
     if (!isSuccess) return;
     AccessibilityInfo.isReduceMotionEnabled().then(reduced => {
-      if (reduced) return;
+      if (reduced) {
+        // Skip animation — snap to visible immediately
+        successAnim.setValue(1);
+        return;
+      }
       Animated.sequence([
         Animated.spring(successAnim, {
           toValue: 1,
@@ -126,18 +152,9 @@ const ResetPasswordScreen: React.FC = () => {
   };
 
   const handleReset = async () => {
-    dispatch(clearError());
     if (!validate()) return;
-    // The OTP is still required by the API – retrieved from a mock context.
-    // In production: pass the actual verified OTP stored in your session/state.
-    await dispatch(
-      resetPasswordThunk({
-        identifier: tempUserIdentifier,
-        otp: '123456', // ← replace with actual OTP from verify step in production
-        newPassword,
-      })
-    );
-    // On success the slice moves flowStep → 'login'
+    await dispatch(resetPasswordThunk({ newPassword }));
+    // On success the slice moves flowStep → 'login' and clears resetToken
   };
 
   return (
@@ -168,7 +185,7 @@ const ResetPasswordScreen: React.FC = () => {
       )}
 
       {/* Redux error banner */}
-      {errorMessage && !isSuccess ? (
+      {resetError && !isSuccess ? (
         <View
           style={[
             styles.errorBanner,
@@ -182,7 +199,7 @@ const ResetPasswordScreen: React.FC = () => {
           ]}
         >
           <Text style={{ color: t.status.error, fontSize: t.typography.label }}>
-            {errorMessage}
+            {resetError}
           </Text>
         </View>
       ) : null}

@@ -49,3 +49,14 @@ export const selectTempIdentifier = (state: RootState) =>
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const selectBackendReady = (state: RootState) => state.auth.backendReady;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Password reset (deep-link flow)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** In-memory only — never persisted. Drives the ResetPasswordScreen. */
+export const selectResetToken = (state: RootState) => state.auth.resetToken;
+
+export const selectResetStatus = (state: RootState) => state.auth.resetStatus;
+
+export const selectResetError = (state: RootState) => state.auth.resetError;

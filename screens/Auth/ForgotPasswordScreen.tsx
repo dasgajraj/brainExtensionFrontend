@@ -3,23 +3,27 @@
  *
  * Forgot-password request screen.
  *
- * Flow: User enters email → dispatch forgotPasswordThunk
- *       → on success: Redux sets flowStep = 'verify' (slice handles this)
+ * Flow: User enters email → POST /auth/forgot-password
+ *       → backend sends a reset link to the email address
+ *       → UI shows a generic success message (no navigation)
+ *       → User taps the link in their email → deep link opens the app
+ *         → ResetPasswordScreen
+ *
+ * Security: Always show the same success message regardless of whether the
+ * account exists, to prevent email enumeration attacks.
  *
  * Theme: all colours/spacing sourced from getTokens(mode).
  */
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Linking, Platform } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/RootReducer';
 import { AppDispatch } from '../../redux/Store';
 import getTokens from '../../theme/tokens';
 import {
   forgotPasswordThunk,
-  setTempIdentifier,
   setFlowStep,
-  clearError,
 } from '../../redux/authSlice';
 import AuthLayout from '../../components/auth/AuthLayout';
 import AuthInput from '../../components/auth/AuthInput';
@@ -32,35 +36,114 @@ import AuthButton from '../../components/auth/AuthButton';
 const ForgotPasswordScreen: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const mode = useSelector((s: RootState) => s.theme.mode);
-  const { status, errorMessage } = useSelector((s: RootState) => s.auth);
+  const { resetStatus, resetError } = useSelector((s: RootState) => s.auth);
   const t = getTokens(mode);
 
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState<string | null>(null);
 
-  const isLoading = status === 'loading';
+  const isLoading = resetStatus === 'loading';
+  const isSuccess = resetStatus === 'success';
+
+  const openEmailApp = () => {
+    if (Platform.OS === 'android') {
+      // Android Intent URI — bypasses canOpenURL restrictions on API 30+
+      // and shows the native "Open with" chooser listing all email clients.
+      // Falls back to mailto: (also triggers the chooser) if intent fails.
+      Linking.openURL(
+        'intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.APP_EMAIL;end',
+      ).catch(() => Linking.openURL('mailto:').catch(() => {}));
+    } else {
+      // iOS: try Gmail first, then fall back to native Mail app
+      Linking.canOpenURL('googlegmail://')
+        .then(supported =>
+          Linking.openURL(supported ? 'googlegmail://' : 'message:'),
+        )
+        .catch(() => Linking.openURL('message:').catch(() => {}));
+    }
+  };
 
   const handleSubmit = async () => {
-    dispatch(clearError());
     const trimmed = email.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       setEmailError('Enter a valid email address.');
       return;
     }
     setEmailError(null);
-    dispatch(setTempIdentifier(trimmed));
-    await dispatch(forgotPasswordThunk({ email: trimmed }));
-    // Slice transitions flowStep to 'verify' on success
+    const result = await dispatch(forgotPasswordThunk({ email: trimmed }));
+    // Auto-open the email app on success so the user can tap the reset link
+    if (forgotPasswordThunk.fulfilled.match(result)) {
+      openEmailApp();
+    }
   };
+
+  // ── Success state — generic message (no email-existence confirmation) ──────
+  if (isSuccess) {
+    return (
+      <AuthLayout
+        title={`Check Your\nEmail`}
+        subtitle="We've sent instructions to reset your password."
+        onBack={() => dispatch(setFlowStep('login'))}
+      >
+        <View
+          style={[
+            styles.successBanner,
+            {
+              backgroundColor: t.status.successSubtle,
+              borderColor: t.status.success,
+              borderRadius: t.shape.card,
+              padding: t.spacing.lg,
+              marginBottom: t.spacing.lg,
+            },
+          ]}
+        >
+          <Text
+            style={{
+              color: t.status.success,
+              fontSize: t.typography.label,
+              lineHeight: 22,
+              fontWeight: '600',
+            }}
+          >
+            ✓  If an account exists with that email, a reset link has been sent.
+          </Text>
+          <Text
+            style={{
+              color: t.text.secondary,
+              fontSize: t.typography.caption,
+              lineHeight: 20,
+              marginTop: t.spacing.sm,
+            }}
+          >
+            Tap the link in your email to set a new password. Check your spam folder if you don't see it.
+          </Text>
+        </View>
+
+        <AuthButton
+          label="Open Email App"
+          onPress={openEmailApp}
+          loading={false}
+        />
+
+        <View style={{ marginTop: t.spacing.sm }}>
+          <AuthButton
+            label="Back to Login"
+            onPress={() => dispatch(setFlowStep('login'))}
+            loading={false}
+          />
+        </View>
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout
       title={`Forgot\nPassword?`}
-      subtitle="Enter your email and we'll send you a reset code."
+      subtitle="Enter your email and we'll send you a reset link."
       onBack={() => dispatch(setFlowStep('login'))}
     >
       {/* Info banner – shown when no error */}
-      {!errorMessage && (
+      {!resetError && (
         <View
           style={[
             styles.infoBanner,
@@ -74,13 +157,13 @@ const ForgotPasswordScreen: React.FC = () => {
           ]}
         >
           <Text style={{ color: t.primary.accent, fontSize: t.typography.label, lineHeight: 20 }}>
-            💡  A 6-digit code will be sent to your email address.
+            💡  A reset link will be sent to your email. Tap it to set a new password.
           </Text>
         </View>
       )}
 
-      {/* Redux error banner */}
-      {errorMessage ? (
+      {/* Reset-flow error banner */}
+      {resetError ? (
         <View
           style={[
             styles.errorBanner,
@@ -94,7 +177,7 @@ const ForgotPasswordScreen: React.FC = () => {
           ]}
         >
           <Text style={{ color: t.status.error, fontSize: t.typography.label }}>
-            {errorMessage}
+            {resetError}
           </Text>
         </View>
       ) : null}
@@ -117,7 +200,7 @@ const ForgotPasswordScreen: React.FC = () => {
       />
 
       <View style={{ marginTop: t.spacing.sm }}>
-        <AuthButton label="Send Reset Code" onPress={handleSubmit} loading={isLoading} />
+        <AuthButton label="Send Reset Link" onPress={handleSubmit} loading={isLoading} />
       </View>
     </AuthLayout>
   );
@@ -128,6 +211,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   errorBanner: {
+    borderWidth: 1,
+  },
+  successBanner: {
     borderWidth: 1,
   },
 });

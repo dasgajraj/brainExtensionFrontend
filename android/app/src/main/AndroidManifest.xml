@@ -46,21 +46,6 @@
             <category android:name="android.intent.category.BROWSABLE" />
             <data android:scheme="brainextension" android:host="auth" />
         </intent-filter>
-        <!--
-          Android App Links: https://brain-extension-exng.onrender.com/auth/reset-password-bridge
-          android:autoVerify="true" tells Android to verify domain ownership via
-          /.well-known/assetlinks.json on the server. Once verified, tapping the
-          link opens the app directly with no browser chooser.
-        -->
-        <intent-filter android:autoVerify="true">
-            <action android:name="android.intent.action.VIEW" />
-            <category android:name="android.intent.category.DEFAULT" />
-            <category android:name="android.intent.category.BROWSABLE" />
-            <data
-                android:scheme="https"
-                android:host="brain-extension-exng.onrender.com"
-                android:pathPrefix="/auth/reset-password-bridge" />
-        </intent-filter>
       </activity>
     </application>
 </manifest>

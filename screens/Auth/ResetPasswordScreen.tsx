@@ -1,20 +1,3 @@
-/**
- * screens/Auth/ResetPasswordScreen.tsx
- *
- * Final step in the forgot-password flow.
- * Reached only via a deep link: brainextension://auth/reset-password/<TOKEN>
- *
- * Flow: deep link → setResetToken(token) stored in Redux (in-memory)
- *       → this screen reads resetToken from state
- *       → user enters new password → PATCH /auth/reset-password/:token
- *       → on success: slice clears resetToken + moves flowStep → 'login'
- *
- * Guard: if resetToken is null (user navigated here without a link) the
- * screen immediately redirects to login via a useEffect.
- *
- * Theme: all colours/spacing sourced from getTokens(mode).
- */
-
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -179,7 +162,7 @@ const ResetPasswordScreen: React.FC = () => {
           ]}
         >
           <Text style={{ color: t.status.success, fontSize: t.typography.label, fontWeight: '600' }}>
-            ✓  Password changed successfully! Redirecting…
+            Password changed successfully! Redirecting...
           </Text>
         </Animated.View>
       )}
@@ -279,7 +262,7 @@ const ResetPasswordScreen: React.FC = () => {
               lineHeight: 20,
             }}
           >
-            {met ? '✓' : '○'} {rule}
+            {met ? '+' : '-'} {rule}
           </Text>
         ))}
       </View>

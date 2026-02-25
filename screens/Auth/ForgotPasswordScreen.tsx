@@ -1,20 +1,3 @@
-/**
- * screens/Auth/ForgotPasswordScreen.tsx
- *
- * Forgot-password request screen.
- *
- * Flow: User enters email → POST /auth/forgot-password
- *       → backend sends a reset link to the email address
- *       → UI shows a generic success message (no navigation)
- *       → User taps the link in their email → deep link opens the app
- *         → ResetPasswordScreen
- *
- * Security: Always show the same success message regardless of whether the
- * account exists, to prevent email enumeration attacks.
- *
- * Theme: all colours/spacing sourced from getTokens(mode).
- */
-
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Linking, Platform } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
@@ -47,14 +30,10 @@ const ForgotPasswordScreen: React.FC = () => {
 
   const openEmailApp = () => {
     if (Platform.OS === 'android') {
-      // Android Intent URI — bypasses canOpenURL restrictions on API 30+
-      // and shows the native "Open with" chooser listing all email clients.
-      // Falls back to mailto: (also triggers the chooser) if intent fails.
       Linking.openURL(
         'intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.APP_EMAIL;end',
       ).catch(() => Linking.openURL('mailto:').catch(() => {}));
     } else {
-      // iOS: try Gmail first, then fall back to native Mail app
       Linking.canOpenURL('googlegmail://')
         .then(supported =>
           Linking.openURL(supported ? 'googlegmail://' : 'message:'),
@@ -71,7 +50,6 @@ const ForgotPasswordScreen: React.FC = () => {
     }
     setEmailError(null);
     const result = await dispatch(forgotPasswordThunk({ email: trimmed }));
-    // Auto-open the email app on success so the user can tap the reset link
     if (forgotPasswordThunk.fulfilled.match(result)) {
       openEmailApp();
     }
@@ -105,7 +83,7 @@ const ForgotPasswordScreen: React.FC = () => {
               fontWeight: '600',
             }}
           >
-            ✓  If an account exists with that email, a reset link has been sent.
+            If an account exists with that email, a reset link has been sent.
           </Text>
           <Text
             style={{
@@ -157,7 +135,7 @@ const ForgotPasswordScreen: React.FC = () => {
           ]}
         >
           <Text style={{ color: t.primary.accent, fontSize: t.typography.label, lineHeight: 20 }}>
-            💡  A reset link will be sent to your email. Tap it to set a new password.
+            A reset link will be sent to your email. Tap it to set a new password.
           </Text>
         </View>
       )}

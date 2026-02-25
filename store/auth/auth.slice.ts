@@ -1,18 +1,3 @@
-/**
- * store/auth/auth.slice.ts
- *
- * Redux Toolkit slice for authentication state.
- *
- * This is the canonical auth slice. redux/authSlice.ts re-exports everything
- * from here for backward compatibility with the existing screen imports.
- *
- * State persistence strategy (via redux-persist):
- *  Persisted   : user, isAuthenticated, displayName, flowStep
- *  NOT persisted: accessToken, refreshToken, status, errorMessage, backendReady
- *  Reason       : tokens live in AsyncStorage via token.service.ts;
- *                 transient state should always restart clean
- */
-
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { AuthState, VerifyPurpose } from './auth.types';
 import type { AuthResult, RefreshResult } from '../../services/auth.service';
@@ -26,10 +11,6 @@ import {
   verifyRequestThunk,
   resetPasswordThunk,
 } from './auth.thunks';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Initial state
-// ─────────────────────────────────────────────────────────────────────────────
 
 const initialState: AuthState = {
   user: null,
@@ -47,10 +28,6 @@ const initialState: AuthState = {
   resetStatus: 'idle',
   resetError: null,
 };
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helper — applies an AuthResult into state (login / signup fulfillment)
-// ─────────────────────────────────────────────────────────────────────────────
 
 function applyAuthResult(state: AuthState, payload: AuthResult): void {
   state.user = payload.user;

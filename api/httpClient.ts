@@ -1,25 +1,3 @@
-/**
- * api/httpClient.ts
- *
- * Axios instance that is the ONLY HTTP entry-point for the app.
- *
- * Responsibilities:
- *  1. Attach the Authorization: Bearer <token> header on every request
- *  2. Intercept HTTP 401 responses, silently refresh the token, and
- *     retry the failed request — queueing concurrent failures to avoid
- *     multiple simultaneous refresh calls
- *  3. Force logout when a refresh attempt fails
- *
- * Circular-dependency strategy:
- *  The interceptors need to dispatch Redux actions (setTokens / signOut).
- *  Importing the slice directly here would create a cycle:
- *    httpClient → auth.slice → auth.thunks → auth.service → httpClient
- *
- *  Solution: `injectStoreCallbacks()` is called ONCE from redux/Store.tsx
- *  after the store is created, injecting lightweight callbacks.
- *  httpClient itself imports NO Redux files.
- */
-
 import axios, {
   AxiosInstance,
   AxiosError,
@@ -29,17 +7,9 @@ import axios, {
 import type { ApiErrorBody, NormalisedError } from '../types/api.types';
 import { tokenService } from '../services/token.service';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Constants
-// ─────────────────────────────────────────────────────────────────────────────
-
 export const BASE_URL = 'https://brain-extension-exng.onrender.com';
 const REFRESH_ENDPOINT = '/auth/refresh';
 const REQUEST_TIMEOUT_MS = 15_000;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Axios instance
-// ─────────────────────────────────────────────────────────────────────────────
 
 export const httpClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
@@ -50,21 +20,13 @@ export const httpClient: AxiosInstance = axios.create({
   },
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Store callback injection  (breaks circular dependency)
-// ─────────────────────────────────────────────────────────────────────────────
-
+// injected by redux/Store.tsx after store creation to avoid circular imports
 type OnTokensRefreshed = (accessToken: string, refreshToken: string) => void;
 type OnForceLogout = () => void;
 
 let _onTokensRefreshed: OnTokensRefreshed | null = null;
 let _onForceLogout: OnForceLogout | null = null;
 
-/**
- * Call this once from redux/Store.tsx immediately after creating the store.
- * Provides the interceptors with Redux dispatch capability without a
- * static import cycle.
- */
 export function injectStoreCallbacks(
   onTokensRefreshed: OnTokensRefreshed,
   onForceLogout: OnForceLogout,

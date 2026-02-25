@@ -1,36 +1,8 @@
-/**
- * store/auth/auth.thunks.ts
- *
- * All async Redux thunks for the authentication domain.
- *
- * Architecture rules enforced here:
- *  - No direct axios/fetch calls → delegate to authService
- *  - No token logic → handled by tokenService (via authService)
- *  - No UI concerns → errors are normalised strings dispatched into state
- *  - No hardcoded strings → all messages come from the API or constants below
- *
- * ─── API coverage ────────────────────────────────────────────────────────────
- * REAL API:  POST  /auth/signup              → signUpThunk
- *            POST  /auth/login               → loginThunk
- *            POST  /auth/logout              → logoutThunk
- *            POST  /auth/refresh             → bootstrapThunk (session restore)
- *            GET   /health                   → bootstrapThunk (backend wake-up)
- *            POST  /auth/forgot-password     → forgotPasswordThunk
- *            POST  /auth/verify/request      → verifyRequestThunk
- *            POST  /auth/verify/confirm      → verifyOtpThunk
- *            PATCH /auth/reset-password/:tok → resetPasswordThunk
- * ─────────────────────────────────────────────────────────────────────────────
- */
-
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { authService } from '../../services/auth.service';
 import { checkHealth } from '../../api/health.api';
 import type { AuthResult, RefreshResult } from '../../services/auth.service';
 import type { NormalisedError } from '../../types/api.types';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Error helper — extracts the message string from a NormalisedError or unknown
-// ─────────────────────────────────────────────────────────────────────────────
 
 function extractMessage(error: unknown, fallback: string): string {
   if (

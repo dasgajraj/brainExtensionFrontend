@@ -1,17 +1,3 @@
-/**
- * api/auth.api.ts
- *
- * Raw HTTP calls for every /auth/* endpoint.
- *
- * Rules:
- *  - No business logic here — only transport
- *  - Every function throws a NormalisedError on failure
- *  - All functions are async and return typed payloads
- *  - Uses httpClient (with interceptors) for authenticated endpoints
- *  - apiRefresh uses raw axios (NOT httpClient) to avoid re-triggering the
- *    401-interceptor and causing infinite refresh loops
- */
-
 import axios from 'axios';
 import httpClient, { normaliseAxiosError, BASE_URL } from './httpClient';
 import { BRAIN_PIN } from '@env';
@@ -33,10 +19,6 @@ import type {
   ResetPasswordResponse,
 } from '../types/auth.types';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /auth/signup
-// ─────────────────────────────────────────────────────────────────────────────
-
 export async function apiSignUp(payload: SignUpRequest): Promise<SignUpResponse> {
   try {
     const response = await httpClient.post<SignUpResponse>('/auth/signup', payload);
@@ -45,10 +27,6 @@ export async function apiSignUp(payload: SignUpRequest): Promise<SignUpResponse>
     throw normaliseAxiosError(error);
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /auth/login
-// ─────────────────────────────────────────────────────────────────────────────
 
 export async function apiLogin(payload: LoginRequest): Promise<LoginResponse> {
   try {
@@ -59,10 +37,7 @@ export async function apiLogin(payload: LoginRequest): Promise<LoginResponse> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /auth/refresh  — uses raw axios to avoid the 401 interceptor loop
-// ─────────────────────────────────────────────────────────────────────────────
-
+// raw axios — avoids the 401 interceptor loop
 export async function apiRefresh(payload: RefreshRequest): Promise<RefreshResponse> {
   try {
     const response = await axios.post<RefreshResponse>(
@@ -75,10 +50,6 @@ export async function apiRefresh(payload: RefreshRequest): Promise<RefreshRespon
     throw normaliseAxiosError(error);
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /auth/logout
-// ─────────────────────────────────────────────────────────────────────────────
 
 export async function apiLogout(payload: LogoutRequest): Promise<LogoutResponse> {
   try {

@@ -30,6 +30,7 @@ import ResetPasswordScreen from './ResetPasswordScreen';
 
 const AuthContainer: React.FC = () => {
   const flowStep = useSelector((s: RootState) => s.auth.flowStep);
+  console.log('🗺️ [AuthContainer] flowStep =', flowStep);
 
   const renderStep = () => {
     switch (flowStep) {

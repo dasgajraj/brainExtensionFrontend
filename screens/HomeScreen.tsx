@@ -18,8 +18,9 @@ import { logoutThunk } from '../redux/authSlice';
 import { getTokens } from '../theme/tokens';
 import ProfileScreen from './ProfileScreen';
 import BrainAskScreen from './BrainAskScreen';
+import BrainResultScreen from './BrainResultScreen';
 
-type Page = 'home' | 'profile' | 'brainAsk';
+type Page = 'home' | 'profile' | 'brainAsk' | 'brainResult';
 
 const { width } = Dimensions.get('window');
 const CARD_W = (width - 48) / 2;
@@ -101,14 +102,27 @@ function HomeScreen() {
     .join('')
     .toUpperCase();
 
+  const navigate = (target: Page) => {
+    console.log(`🗺️ [HomeScreen] navigate: ${page} → ${target}`);
+    setPage(target);
+  };
+
   const handleLogout = () =>
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Log Out', style: 'destructive', onPress: () => dispatch(logoutThunk() as any) },
+      {
+        text: 'Log Out',
+        style: 'destructive',
+        onPress: () => {
+          console.log('🚪 [HomeScreen] user confirmed logout — dispatching logoutThunk');
+          dispatch(logoutThunk() as any);
+        },
+      },
     ]);
 
-  if (page === 'profile') return <ProfileScreen onBack={() => setPage('home')} />;
-  if (page === 'brainAsk') return <BrainAskScreen onBack={() => setPage('home')} />;
+  if (page === 'profile') return <ProfileScreen onBack={() => navigate('home')} />;
+  if (page === 'brainAsk') return <BrainAskScreen onBack={() => navigate('home')} />;
+  if (page === 'brainResult') return <BrainResultScreen onBack={() => navigate('home')} />
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: t.background.screen }]}>
@@ -135,7 +149,7 @@ function HomeScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.avatarBtn, { backgroundColor: t.primary.default + '22', borderColor: t.primary.default }]}
-              onPress={() => setPage('profile')}>
+              onPress={() => navigate('profile')}>
               <Text style={[styles.avatarText, { color: t.primary.accent }]}>{avatarLetters}</Text>
             </TouchableOpacity>
           </View>
@@ -182,7 +196,7 @@ function HomeScreen() {
             title="Ask Brain"
             description="Query the Cognitive OS with any question across your workspaces"
             accentColor="#8b5cf6"
-            onPress={() => setPage('brainAsk')}
+            onPress={() => navigate('brainAsk')}
             t={t}
           />
           <NavCard
@@ -190,16 +204,16 @@ function HomeScreen() {
             title="Profile"
             description="View your account info, session state &amp; token details"
             accentColor="#06b6d4"
-            onPress={() => setPage('profile')}
+            onPress={() => navigate('profile')}
             t={t}
           />
           {/* Placeholder cards — wire when screens are built */}
           <NavCard
-            icon="🧩"
-            title="Lobes"
-            description="Manage your cognitive lobes and memory collections"
+            icon="📋"
+            title="Brain Result"
+            description="Fetch the full output of any request using its ID"
             accentColor="#f59e0b"
-            onPress={() => Alert.alert('Coming Soon', 'Lobes screen is coming next.')}
+            onPress={() => navigate('brainResult')}
             t={t}
           />
           <NavCard

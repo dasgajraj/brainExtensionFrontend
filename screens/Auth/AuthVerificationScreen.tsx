@@ -66,8 +66,7 @@ const AuthVerificationScreen: React.FC = () => {
 
   // ── Auto-send code on mount (email verification flow only) ───────────────
   useEffect(() => {
-    if (verifyPurpose === 'email') {
-      dispatch(verifyRequestThunk());
+    if (verifyPurpose === 'email') {      console.log('📨 [AuthVerificationScreen] mount — auto-dispatching verifyRequestThunk for email verification');      dispatch(verifyRequestThunk());
       setResendCooldown(30);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -129,18 +128,25 @@ const AuthVerificationScreen: React.FC = () => {
 
   const submitOtp = (code?: string) => {
     const otp = code ?? digits.join('');
-    if (otp.length < OTP_LENGTH) return;
+    if (otp.length < OTP_LENGTH) {
+      console.log('⚠️ [AuthVerificationScreen] submitOtp → incomplete OTP, waiting for all digits');
+      return;
+    }
+    console.log('🔢 [AuthVerificationScreen] submitOtp → dispatching verifyOtpThunk', { identifier: tempUserIdentifier, otp: '**masked**', purpose: verifyPurpose });
     dispatch(verifyOtpThunk({ identifier: tempUserIdentifier, otp }));
     // Slice transitions flowStep → 'resetPassword' on success
   };
 
   const handleResend = () => {
+    console.log('🔁 [AuthVerificationScreen] handleResend → resending OTP', { purpose: verifyPurpose, identifier: tempUserIdentifier });
     setDigits(Array(OTP_LENGTH).fill(''));
     inputRefs.current[0]?.focus();
     setResendCooldown(30);
     if (verifyPurpose === 'email') {
+      console.log('📨 [AuthVerificationScreen] handleResend → dispatching verifyRequestThunk');
       dispatch(verifyRequestThunk());
     } else {
+      console.log('🔑 [AuthVerificationScreen] handleResend → dispatching forgotPasswordThunk');
       dispatch(forgotPasswordThunk({ email: tempUserIdentifier }));
     }
   };

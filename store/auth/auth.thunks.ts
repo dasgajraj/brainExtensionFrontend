@@ -45,14 +45,20 @@ async function retryHealthCheck(attempt = 0): Promise<void> {
 export const bootstrapThunk = createAsyncThunk<RefreshResult | null, void>(
   'auth/bootstrap',
   async (_, { rejectWithValue }) => {
+    console.log('🚀 [auth/bootstrap] starting — health check + session restore');
     try {
       // Step 1: Ensure the backend is awake (mandatory per spec)
+      console.log('🏥 [auth/bootstrap] step 1: pinging /health...');
       await retryHealthCheck();
+      console.log('✅ [auth/bootstrap] step 1: /health OK — server is awake');
 
       // Step 2: Attempt to restore an existing session
+      console.log('🔍 [auth/bootstrap] step 2: restoring session via /auth/refresh...');
       const restored = await authService.restoreSession();
+      console.log('ℹ️ [auth/bootstrap] step 2: session restore result =', restored ? '✅ session found' : '⚠️ no session');
       return restored; // null = no session, the slice handles the transitions
     } catch (error) {
+      console.error('❌ [auth/bootstrap] failed', error);
       return rejectWithValue(
         extractMessage(
           error,
@@ -76,9 +82,13 @@ export interface LoginThunkPayload {
 export const loginThunk = createAsyncThunk<AuthResult, LoginThunkPayload>(
   'auth/login',
   async (payload, { rejectWithValue }) => {
+    console.log('🔐 [auth/login] → POST /auth/login', { email: payload.email });
     try {
-      return await authService.login(payload);
+      const result = await authService.login(payload);
+      console.log('✅ [auth/login] ← success', { userId: result.user?._id, email: result.user?.email });
+      return result;
     } catch (error) {
+      console.error('❌ [auth/login] ← failed', error);
       return rejectWithValue(
         extractMessage(error, 'Login failed. Please try again.'),
       );
@@ -100,9 +110,13 @@ export interface SignUpThunkPayload {
 export const signUpThunk = createAsyncThunk<AuthResult, SignUpThunkPayload>(
   'auth/signUp',
   async (payload, { rejectWithValue }) => {
+    console.log('📝 [auth/signUp] → POST /auth/signup', { name: payload.name, email: payload.email });
     try {
-      return await authService.signUp(payload);
+      const result = await authService.signUp(payload);
+      console.log('✅ [auth/signUp] ← success', { userId: result.user?._id });
+      return result;
     } catch (error) {
+      console.error('❌ [auth/signUp] ← failed', error);
       return rejectWithValue(
         extractMessage(error, 'Sign up failed. Please try again.'),
       );
@@ -118,10 +132,13 @@ export const signUpThunk = createAsyncThunk<AuthResult, SignUpThunkPayload>(
 export const logoutThunk = createAsyncThunk<void, void>(
   'auth/logout',
   async (_, { rejectWithValue }) => {
+    console.log('🚪 [auth/logout] → POST /auth/logout');
     try {
       await authService.logout();
+      console.log('✅ [auth/logout] ← success — session cleared');
     } catch (error) {
       // Logout errors are non-fatal; local cleanup happens in the slice
+      console.warn('⚠️ [auth/logout] ← error (non-fatal, local state still cleared)', error);
       return rejectWithValue(
         extractMessage(error, 'Logout encountered an issue.'),
       );
@@ -146,9 +163,12 @@ export const forgotPasswordThunk = createAsyncThunk<
 >(
   'auth/forgotPassword',
   async (payload, { rejectWithValue }) => {
+    console.log('🔑 [auth/forgotPassword] → POST /auth/forgot-password', { email: payload.email });
     try {
       await authService.requestPasswordReset(payload.email);
+      console.log('✅ [auth/forgotPassword] ← success — reset email dispatched');
     } catch (error) {
+      console.error('❌ [auth/forgotPassword] ← failed', error);
       return rejectWithValue(
         extractMessage(error, 'Could not send reset link. Please try again.'),
       );
@@ -166,16 +186,20 @@ export const forgotPasswordThunk = createAsyncThunk<
 export const verifyRequestThunk = createAsyncThunk<void, void>(
   'auth/verifyRequest',
   async (_, { getState, rejectWithValue }) => {
+    const { auth } = getState() as {
+      auth: { user: { email: string } | null; tempUserIdentifier: string };
+    };
+    const email = auth.user?.email ?? auth.tempUserIdentifier;
+    console.log('📨 [auth/verifyRequest] → POST /auth/verify/request', { email });
+    if (!email) {
+      console.error('❌ [auth/verifyRequest] ← no email found in state');
+      return rejectWithValue('No email address found. Please sign in again.');
+    }
     try {
-      const { auth } = getState() as {
-        auth: { user: { email: string } | null; tempUserIdentifier: string };
-      };
-      const email = auth.user?.email ?? auth.tempUserIdentifier;
-      if (!email) {
-        return rejectWithValue('No email address found. Please sign in again.');
-      }
       await authService.requestEmailVerification(email);
+      console.log('✅ [auth/verifyRequest] ← OTP sent to', email);
     } catch (error) {
+      console.error('❌ [auth/verifyRequest] ← failed', error);
       return rejectWithValue(
         extractMessage(error, 'Could not send verification code. Please try again.'),
       );
@@ -198,9 +222,12 @@ export interface VerifyOtpThunkPayload {
 export const verifyOtpThunk = createAsyncThunk<void, VerifyOtpThunkPayload>(
   'auth/verifyOtp',
   async (payload, { rejectWithValue }) => {
+    console.log('🔢 [auth/verifyOtp] → POST /auth/verify/confirm', { identifier: payload.identifier, otp: '**masked**' });
     try {
       await authService.confirmEmailVerification(payload.otp);
+      console.log('✅ [auth/verifyOtp] ← email verified successfully');
     } catch (error) {
+      console.error('❌ [auth/verifyOtp] ← failed (wrong or expired OTP?)', error);
       return rejectWithValue(
         extractMessage(error, 'Verification failed. Try again.'),
       );
@@ -227,8 +254,10 @@ export const resetPasswordThunk = createAsyncThunk<
   'auth/resetPassword',
   async (payload, { getState, rejectWithValue }) => {
     const { auth } = getState() as { auth: { resetToken: string | null } };
+    console.log('🔒 [auth/resetPassword] → PATCH /auth/reset-password/:token', { hasToken: !!auth.resetToken });
 
     if (!auth.resetToken) {
+      console.error('❌ [auth/resetPassword] ← no resetToken in state');
       return rejectWithValue(
         'Reset session expired. Please request a new reset link.',
       );
@@ -236,7 +265,9 @@ export const resetPasswordThunk = createAsyncThunk<
 
     try {
       await authService.resetPassword(auth.resetToken, payload.newPassword);
+      console.log('✅ [auth/resetPassword] ← password updated successfully');
     } catch (error) {
+      console.error('❌ [auth/resetPassword] ← failed', error);
       return rejectWithValue(
         extractMessage(error, 'Password reset failed. Please try again.'),
       );

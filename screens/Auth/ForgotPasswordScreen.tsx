@@ -44,14 +44,20 @@ const ForgotPasswordScreen: React.FC = () => {
 
   const handleSubmit = async () => {
     const trimmed = email.trim();
+    console.log('📧 [ForgotPasswordScreen] handleSubmit → validating email', { email: trimmed });
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      console.log('⚠️ [ForgotPasswordScreen] handleSubmit → invalid email format');
       setEmailError('Enter a valid email address.');
       return;
     }
     setEmailError(null);
+    console.log('🚀 [ForgotPasswordScreen] handleSubmit → dispatching forgotPasswordThunk', { email: trimmed });
     const result = await dispatch(forgotPasswordThunk({ email: trimmed }));
     if (forgotPasswordThunk.fulfilled.match(result)) {
+      console.log('✅ [ForgotPasswordScreen] handleSubmit ← fulfilled, opening email app');
       openEmailApp();
+    } else {
+      console.error('❌ [ForgotPasswordScreen] handleSubmit ← rejected', result.payload);
     }
   };
 

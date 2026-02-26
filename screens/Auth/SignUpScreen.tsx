@@ -63,14 +63,22 @@ const SignUpScreen: React.FC = () => {
     });
 
   const handleSignUp = async () => {
+    console.log('📝 [SignUpScreen] handleSignUp → validating fields', { name, email });
     dispatch(clearError());
     const errors = validate(name, email, password, confirm);
     if (Object.keys(errors).length > 0) {
+      console.log('⚠️ [SignUpScreen] handleSignUp → validation failed', errors);
       setFieldErrors(errors);
       return;
     }
     setFieldErrors({});
-    await dispatch(signUpThunk({ name: name.trim(), email: email.trim(), password }));
+    console.log('🚀 [SignUpScreen] handleSignUp → dispatching signUpThunk', { name: name.trim(), email: email.trim() });
+    const result = await dispatch(signUpThunk({ name: name.trim(), email: email.trim(), password }));
+    if (signUpThunk.rejected.match(result)) {
+      console.error('❌ [SignUpScreen] handleSignUp ← signUpThunk rejected', result.payload);
+    } else {
+      console.log('✅ [SignUpScreen] handleSignUp ← signUpThunk fulfilled');
+    }
   };
 
   return (
@@ -165,7 +173,10 @@ const SignUpScreen: React.FC = () => {
           Already have an account?{' '}
         </Text>
         <TouchableOpacity
-          onPress={() => dispatch(setFlowStep('login'))}
+          onPress={() => {
+            console.log('🔐 [SignUpScreen] navigate → login');
+            dispatch(setFlowStep('login'));
+          }}
           accessibilityRole="link"
         >
           <Text

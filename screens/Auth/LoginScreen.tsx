@@ -62,11 +62,19 @@ const LoginScreen: React.FC = () => {
   };
 
   const handleLogin = async () => {
+    console.log('🔐 [LoginScreen] handleLogin → validating fields', { email });
     dispatch(clearError());
-    if (!validate()) return;
+    if (!validate()) {
+      console.log('⚠️ [LoginScreen] handleLogin → validation failed, stopping');
+      return;
+    }
+    console.log('🚀 [LoginScreen] handleLogin → dispatching loginThunk', { email: email.trim() });
     const result = await dispatch(loginThunk({ email: email.trim(), password }));
     if (loginThunk.rejected.match(result)) {
+      console.error('❌ [LoginScreen] handleLogin ← loginThunk rejected', result.payload);
       // errorMessage is now in Redux state – AuthLayout / inline banner will show it
+    } else {
+      console.log('✅ [LoginScreen] handleLogin ← loginThunk fulfilled');
     }
   };
 
@@ -126,7 +134,10 @@ const LoginScreen: React.FC = () => {
 
       {/* Forgot password link */}
       <TouchableOpacity
-        onPress={() => dispatch(setFlowStep('forgotPassword'))}
+        onPress={() => {
+          console.log('💭 [LoginScreen] navigate → forgotPassword');
+          dispatch(setFlowStep('forgotPassword'));
+        }}
         style={[styles.forgotBtn, { marginBottom: t.spacing.xl }]}
         accessibilityRole="link"
       >
@@ -159,7 +170,10 @@ const LoginScreen: React.FC = () => {
           Don't have an account?{' '}
         </Text>
         <TouchableOpacity
-          onPress={() => dispatch(setFlowStep('signup'))}
+          onPress={() => {
+            console.log('📝 [LoginScreen] navigate → signup');
+            dispatch(setFlowStep('signup'));
+          }}
           accessibilityRole="link"
         >
           <Text

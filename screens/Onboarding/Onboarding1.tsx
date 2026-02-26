@@ -275,7 +275,7 @@ const Onboarding1: React.FC<Onboarding1Props> = ({ onNext, onSkip, theme = 'dark
           onPress={onNext}
           activeOpacity={0.8}
         >
-          <Text style={styles.nextIcon}>→</Text>
+          <Text style={styles.nextIcon}>Next</Text>
         </TouchableOpacity>
       </Animated.View>
     </LinearGradient>
@@ -444,9 +444,10 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   nextIcon: {
-    fontSize: 32,
+    fontSize: 15,
     color: '#fff',
-    fontWeight: 'bold',
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
 });
 

@@ -20,6 +20,7 @@ import {
   BrainAskResponse,
   BrainRequest,
 } from '../api/brain.api';
+import { addToHistory } from '../services/brainHistory.service';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const LANGUAGES = ['English', 'Hindi', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi', 'Gujarati'];
@@ -147,6 +148,7 @@ export default function BrainAskScreen({ onBack }: BrainAskScreenProps) {
       Alert.alert('Empty Query', 'Please enter a question before submitting.');
       return;
     }
+    console.log('🧠 [BrainAskScreen] handleAsk — submitting query', { mode, targetLanguage, workspaceId: workspaceId.trim() || 'General', queryPreview: query.trim().slice(0, 60) });
     setIsAsking(true);
     setErrorMsg('');
     setAskResponse(null);
@@ -158,10 +160,24 @@ export default function BrainAskScreen({ onBack }: BrainAskScreenProps) {
         mode,
         workspaceId: workspaceId.trim() || 'General',
       });
+      console.log('✅ [BrainAskScreen] handleAsk — ask response received', { requestId: res.requestId, selectedLobe: res.selectedLobe, confidence: res.confidence });
       setAskResponse(res);
       setStep('submitted');
+      // ── Persist to local history ────────────────────────────────────────
+      addToHistory({
+        requestId: res.requestId,
+        query: query.trim().slice(0, 120),
+        workspaceId: workspaceId.trim() || 'General',
+        mode,
+        targetLanguage,
+        selectedLobe: res.selectedLobe,
+        confidence: res.confidence,
+        askedAt: new Date().toISOString(),
+      });
+      console.log('💾 [BrainAskScreen] handleAsk — saved to history, starting auto-poll');
       startPolling(res.requestId);
     } catch (err: any) {
+      console.error('❌ [BrainAskScreen] handleAsk — failed', err);
       setErrorMsg(err?.message ?? 'Failed to send request. Please try again.');
       setStep('error');
     } finally {
@@ -171,18 +187,23 @@ export default function BrainAskScreen({ onBack }: BrainAskScreenProps) {
 
   // ── Auto-poll result ───────────────────────────────────────────────────────
   const startPolling = (requestId: string) => {
+    console.log(`⏳ [BrainAskScreen] startPolling — id=${requestId} interval=${POLL_INTERVAL_MS}ms maxPolls=${MAX_POLLS}`);
     pollCountRef.current = 0;
     stopPolling();
     pollRef.current = setInterval(async () => {
       pollCountRef.current += 1;
+      console.log(`🔃 [BrainAskScreen] poll #${pollCountRef.current}/${MAX_POLLS} — id=${requestId}`);
       if (pollCountRef.current > MAX_POLLS) {
+        console.warn('⏰ [BrainAskScreen] poll — max polls reached, stopping');
         stopPolling();
         setErrorMsg('Result is taking too long. Try fetching manually.');
         return;
       }
       try {
         const res = await getBrainResult(requestId);
+        console.log(`📊 [BrainAskScreen] poll #${pollCountRef.current} — status=${res.request.status}`);
         if (res.request.status === 'done' || res.request.status === 'failed') {
+          console.log(`🏁 [BrainAskScreen] poll — terminal status reached: ${res.request.status}`);
           stopPolling();
           setResult(res.request);
           setStep(res.request.status === 'done' ? 'done' : 'error');
@@ -190,8 +211,8 @@ export default function BrainAskScreen({ onBack }: BrainAskScreenProps) {
             setErrorMsg(res.request.error ?? 'Processing failed.');
           }
         }
-      } catch (_) {
-        // silent — keep polling
+      } catch (pollErr) {
+        console.warn(`⚠️ [BrainAskScreen] poll #${pollCountRef.current} — error (silent, continuing)`, pollErr);
       }
     }, POLL_INTERVAL_MS);
   };

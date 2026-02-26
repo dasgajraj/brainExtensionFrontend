@@ -44,9 +44,8 @@ const AuthPasswordField: React.FC<AuthPasswordFieldProps> = ({
       accessibilityRole="button"
       accessibilityLabel={visible ? 'Hide password' : 'Show password'}
     >
-      {/* Unicode eye glyphs – no asset dependency */}
-      <Text style={{ fontSize: 18, color: t.text.muted }}>
-        {visible ? '🙈' : '👁'}
+      <Text style={{ fontSize: 13, fontWeight: '600', color: t.text.muted, letterSpacing: 0.3 }}>
+        {visible ? 'HIDE' : 'SHOW'}
       </Text>
     </TouchableOpacity>
   );

@@ -17,13 +17,16 @@ const OnboardingContainer: React.FC<OnboardingContainerProps> = ({
 
   const handleNext = () => {
     if (currentScreen < 3) {
+      console.log(`➡️ [Onboarding] handleNext → screen ${currentScreen} → ${currentScreen + 1}`);
       setCurrentScreen(currentScreen + 1);
     } else {
+      console.log('✅ [Onboarding] handleNext → all screens done, completing onboarding');
       onComplete();
     }
   };
 
   const handleSkip = () => {
+    console.log(`⏭️ [Onboarding] handleSkip → skipped from screen ${currentScreen}, completing onboarding`);
     onComplete();
   };
 

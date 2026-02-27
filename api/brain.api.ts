@@ -9,7 +9,10 @@
  * (reads accessToken from AsyncStorage / token.service.ts).
  */
 
-import httpClient, { normaliseAxiosError } from './httpClient';
+import axios from 'axios';
+import httpClient, { BASE_URL, normaliseAxiosError } from './httpClient';
+import { tokenService } from '../services/token.service';
+import { BRAIN_PIN } from '@env';
 
 // ─── Request / Response Types ─────────────────────────────────────────────────
 
@@ -60,6 +63,33 @@ export interface BrainResultResponse {
   request: BrainRequest;
 }
 
+// ─── Translate ────────────────────────────────────────────────────────────────
+
+export interface BrainTranslateRequest {
+  text: string;
+  targetLanguage: string;
+}
+
+export interface BrainTranslateResponse {
+  status: string;
+  translation: string;
+  sourceText: string;
+  targetLanguage: string;
+}
+
+// ─── Vision ───────────────────────────────────────────────────────────────────
+
+export interface BrainVisionRequest {
+  /** Full data URI: "data:image/png;base64,..." */
+  image: string;
+  workspaceId: string;
+}
+
+export interface BrainVisionResponse {
+  status: string;
+  explanation: string;
+}
+
 // ─── API Functions ────────────────────────────────────────────────────────────
 
 /**
@@ -69,7 +99,22 @@ export interface BrainResultResponse {
 export async function askBrain(payload: BrainAskRequest): Promise<BrainAskResponse> {
   console.log('🧠 [brain.api] askBrain → POST /brain/ask', { query: payload.query.slice(0, 80), mode: payload.mode, workspaceId: payload.workspaceId, targetLanguage: payload.targetLanguage });
   try {
-    const { data } = await httpClient.post<BrainAskResponse>('/brain/ask', payload);
+    // Use plain axios (not httpClient) to avoid async-interceptor issues with
+    // POST bodies on React Native New Architecture (Bridgeless/Hermes).
+    // This is the same pattern used by apiRefresh which is known to work.
+    const accessToken = await tokenService.getAccessToken();
+    const { data } = await axios.post<BrainAskResponse>(
+      `${BASE_URL}/brain/ask`,
+      payload,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-brain-pin': BRAIN_PIN,
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        timeout: 30_000,
+      },
+    );
     console.log('✅ [brain.api] askBrain ← success', { requestId: data.requestId, selectedLobe: data.selectedLobe, confidence: data.confidence, routerReason: data.routerReason });
     return data;
   } catch (error) {
@@ -88,11 +133,70 @@ export async function getBrainResult(requestId: string): Promise<BrainResultResp
   try {
     const { data } = await httpClient.get<BrainResultResponse>(
       `/brain/result/${requestId}`,
+      { headers: { 'x-brain-pin': BRAIN_PIN } },
     );
     console.log('✅ [brain.api] getBrainResult ← success', { status: data.request.status, lobe: data.request.selectedLobe, output: data.request.output ? `${String(data.request.output).slice(0, 60)}...` : null });
     return data;
   } catch (error) {
     console.error(`❌ [brain.api] getBrainResult ← error for id=${requestId}`, error);
+    throw normaliseAxiosError(error);
+  }
+}
+
+/**
+ * POST /brain/translate
+ * Translates text into the target language.
+ * Uses plain axios (not httpClient) to avoid async-interceptor POST-body issues.
+ */
+export async function translateBrain(payload: BrainTranslateRequest): Promise<BrainTranslateResponse> {
+  console.log('🌐 [brain.api] translateBrain → POST /brain/translate', { textLen: payload.text.length, targetLanguage: payload.targetLanguage });
+  try {
+    const accessToken = await tokenService.getAccessToken();
+    const { data } = await axios.post<BrainTranslateResponse>(
+      `${BASE_URL}/brain/translate`,
+      payload,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-brain-pin': BRAIN_PIN,
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        timeout: 30_000,
+      },
+    );
+    console.log('✅ [brain.api] translateBrain ← success', { targetLanguage: data.targetLanguage, translationLen: data.translation?.length });
+    return data;
+  } catch (error) {
+    console.error('❌ [brain.api] translateBrain ← error', error);
+    throw normaliseAxiosError(error);
+  }
+}
+
+/**
+ * POST /brain/vision
+ * Analyses an image (base64 data URI) and returns a detailed explanation.
+ * Uses plain axios (not httpClient) to avoid async-interceptor POST-body issues.
+ */
+export async function analyzeVision(payload: BrainVisionRequest): Promise<BrainVisionResponse> {
+  console.log('👁️ [brain.api] analyzeVision → POST /brain/vision', { workspaceId: payload.workspaceId, imageLen: payload.image.length });
+  try {
+    const accessToken = await tokenService.getAccessToken();
+    const { data } = await axios.post<BrainVisionResponse>(
+      `${BASE_URL}/brain/vision`,
+      payload,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-brain-pin': BRAIN_PIN,
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        timeout: 60_000, // vision can take longer
+      },
+    );
+    console.log('✅ [brain.api] analyzeVision ← success', { explanationLen: data.explanation?.length });
+    return data;
+  } catch (error) {
+    console.error('❌ [brain.api] analyzeVision ← error', error);
     throw normaliseAxiosError(error);
   }
 }

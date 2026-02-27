@@ -6,28 +6,29 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  SafeAreaView,
   StatusBar,
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
-import { RootState } from '../redux/RootReducer';
-import { getTokens } from '../theme/tokens';
+import { RootState } from '../../redux/RootReducer';
+import { getTokens } from '../../theme/tokens';
 import {
   askBrain,
   getBrainResult,
   BrainAskResponse,
   BrainRequest,
-} from '../api/brain.api';
-import { addToHistory } from '../services/brainHistory.service';
+} from '../../api/brain.api';
+import { addToHistory } from '../../services/brainHistory.service';
+import { MarkdownText } from '../../utils/markdownRenderer';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const LANGUAGES = ['English', 'Hindi', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi', 'Gujarati'];
 const MODES = ['default', 'study', 'creative'];
 const MODE_ICONS: Record<string, string> = { default: '⚙️', study: '📚', creative: '✨' };
-const POLL_INTERVAL_MS = 3000;
-const MAX_POLLS = 20;
+const POLL_INTERVAL_MS = 15_000; // 15 s — prevents hammering Gemini
+const MAX_POLLS = 8;             // 8 × 15 s = 2 min max
 
 type Step = 'form' | 'submitted' | 'done' | 'error';
 type T = ReturnType<typeof getTokens>;
@@ -446,9 +447,7 @@ export default function BrainAskScreen({ onBack }: BrainAskScreenProps) {
                 <View style={{ marginTop: 16 }}>
                   <Text style={[styles.reasonLabel, { color: t.text.muted }]}>Response</Text>
                   <View style={[styles.outputBox, { backgroundColor: t.background.input, borderColor: t.border.default }]}>
-                    <Text style={[styles.outputText, { color: t.text.primary }]} selectable>
-                      {result.output}
-                    </Text>
+                    <MarkdownText content={result.output} t={t} fontSize={14} lineHeight={22} />
                   </View>
                 </View>
               ) : null}

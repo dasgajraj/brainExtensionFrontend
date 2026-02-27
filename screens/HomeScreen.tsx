@@ -5,11 +5,11 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   Alert,
   Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../redux/RootReducer';
 import { AppDispatch } from '../redux/Store';
@@ -17,10 +17,12 @@ import { toggleTheme } from '../redux/Action';
 import { logoutThunk } from '../redux/authSlice';
 import { getTokens } from '../theme/tokens';
 import ProfileScreen from './ProfileScreen';
-import BrainAskScreen from './BrainAskScreen';
-import BrainResultScreen from './BrainResultScreen';
+import BrainAskScreen from './BRAIN/BrainAskScreen';
+import BrainResultScreen from './BRAIN/BrainResultScreen';
+import TranslateScreen from './BRAIN/TranslateScreen';
+import VisionScreen from './BRAIN/VisionScreen';
 
-type Page = 'home' | 'profile' | 'brainAsk' | 'brainResult';
+type Page = 'home' | 'profile' | 'brainAsk' | 'brainResult' | 'translate' | 'vision';
 
 const { width } = Dimensions.get('window');
 const CARD_W = (width - 48) / 2;
@@ -122,7 +124,9 @@ function HomeScreen() {
 
   if (page === 'profile') return <ProfileScreen onBack={() => navigate('home')} />;
   if (page === 'brainAsk') return <BrainAskScreen onBack={() => navigate('home')} />;
-  if (page === 'brainResult') return <BrainResultScreen onBack={() => navigate('home')} />
+  if (page === 'brainResult') return <BrainResultScreen onBack={() => navigate('home')} />;
+  if (page === 'translate') return <TranslateScreen onBack={() => navigate('home')} />;
+  if (page === 'vision') return <VisionScreen onBack={() => navigate('home')} />;
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: t.background.screen }]}>
@@ -202,12 +206,11 @@ function HomeScreen() {
           <NavCard
             icon="👤"
             title="Profile"
-            description="View your account info, session state &amp; token details"
+            description="View your account info, analytics, settings &amp; cognitive profile"
             accentColor="#06b6d4"
             onPress={() => navigate('profile')}
             t={t}
           />
-          {/* Placeholder cards — wire when screens are built */}
           <NavCard
             icon="📋"
             title="Brain Result"
@@ -217,27 +220,27 @@ function HomeScreen() {
             t={t}
           />
           <NavCard
+            icon="🌐"
+            title="Translate"
+            description="Translate any text into Hindi, Hinglish, Tamil and more"
+            accentColor="#a78bfa"
+            onPress={() => navigate('translate')}
+            t={t}
+          />
+          <NavCard
+            icon="👁️"
+            title="Vision"
+            description="Analyse images with AI — get detailed explanations instantly"
+            accentColor="#10b981"
+            onPress={() => navigate('vision')}
+            t={t}
+          />
+          <NavCard
             icon="🕸️"
             title="Neural Graph"
             description="Visualise semantic connections between your memories"
-            accentColor="#10b981"
-            onPress={() => Alert.alert('Coming Soon', 'Neural graph is coming next.')}
-            t={t}
-          />
-          <NavCard
-            icon="💾"
-            title="Memories"
-            description="Browse, add and delete memory fragments across lobes"
             accentColor="#ec4899"
-            onPress={() => Alert.alert('Coming Soon', 'Memories screen is coming next.')}
-            t={t}
-          />
-          <NavCard
-            icon="🌐"
-            title="Translate"
-            description="Translate knowledge into your preferred language"
-            accentColor="#a78bfa"
-            onPress={() => Alert.alert('Coming Soon', 'Translate screen is coming next.')}
+            onPress={() => Alert.alert('Coming Soon', 'Neural graph is coming next.')}
             t={t}
           />
         </View>

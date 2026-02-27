@@ -5,10 +5,10 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../redux/RootReducer';
 import { AppDispatch } from '../redux/Store';
@@ -28,13 +28,6 @@ function formatDate(iso: string | undefined | null): string {
   } catch {
     return iso;
   }
-}
-
-function maskToken(token: string | null | undefined): string {
-  if (!token) return '—';
-  const head = token.slice(0, 12);
-  const tail = token.slice(-6);
-  return `${head}  •••••••••••••  ${tail}`;
 }
 
 function initials(name: string | null | undefined): string {
@@ -149,6 +142,47 @@ const badgeRowStyles = StyleSheet.create({
   empty: { fontSize: 13 },
 });
 
+function SettingChip({
+  label,
+  enabled,
+  t,
+}: {
+  label: string;
+  enabled?: boolean;
+  t: TokensType;
+}) {
+  const on = enabled ?? false;
+  return (
+    <View
+      style={[
+        settingChipStyles.chip,
+        {
+          backgroundColor: on ? t.status.success + '1A' : t.background.screen,
+          borderColor: on ? t.status.success + '70' : t.border.subtle,
+        },
+      ]}>
+      <View style={[settingChipStyles.dot, { backgroundColor: on ? t.status.success : t.text.muted + '60' }]} />
+      <Text style={[settingChipStyles.label, { color: on ? t.status.success : t.text.muted }]}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+const settingChipStyles = StyleSheet.create({
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    gap: 6,
+    width: '47%',
+  },
+  dot: { width: 7, height: 7, borderRadius: 4 },
+  label: { fontSize: 12, fontWeight: '600', flexShrink: 1 },
+});
+
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 interface ProfileScreenProps {
@@ -160,20 +194,9 @@ function ProfileScreen({ onBack }: ProfileScreenProps) {
   const themeMode = useSelector((state: RootState) => state.theme.mode);
   const t = getTokens(themeMode);
 
-  // ── All auth state from Redux ─────────────────────────────────────────────
+  // ── Auth state from Redux ─────────────────────────────────────────────────
   const user = useSelector((state: RootState) => state.auth.user);
-  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
   const displayName = useSelector((state: RootState) => state.auth.displayName);
-  const accessToken = useSelector((state: RootState) => state.auth.accessToken);
-  const refreshToken = useSelector((state: RootState) => state.auth.refreshToken);
-  const authStatus = useSelector((state: RootState) => state.auth.status);
-  const backendReady = useSelector((state: RootState) => state.auth.backendReady);
-  const flowStep = useSelector((state: RootState) => state.auth.flowStep);
-  const verifyPurpose = useSelector((state: RootState) => state.auth.verifyPurpose);
-  const tempUserIdentifier = useSelector((state: RootState) => state.auth.tempUserIdentifier);
-  const resetStatus = useSelector((state: RootState) => state.auth.resetStatus);
-  const resetError = useSelector((state: RootState) => state.auth.resetError);
-  const errorMessage = useSelector((state: RootState) => state.auth.errorMessage);
 
   const handleLogout = () => {
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
@@ -232,62 +255,43 @@ function ProfileScreen({ onBack }: ProfileScreenProps) {
         {/* ── User Info ── */}
         <View style={[styles.card, { backgroundColor: t.background.surface, borderColor: t.border.default }]}>
           <SectionHeader title="Account Info" t={t} />
-          <InfoRow label="User ID (_id)" value={user?._id} mono t={t} />
           <InfoRow label="Full Name" value={user?.name} t={t} />
           <InfoRow label="Email" value={user?.email} t={t} />
           <InfoRow label="Email Verified" value={user?.emailVerified} t={t} />
           <InfoRow label="Plan" value={user?.plan ?? 'free'} t={t} />
           <InfoRow label="Member Since" value={formatDate(user?.createdAt)} t={t} />
-          <InfoRow label="Last Updated" value={formatDate(user?.updatedAt)} t={t} />
           <BadgeRow label="Roles" items={user?.roles ?? []} t={t} />
-          {user?.avatarUrl ? (
-            <InfoRow label="Avatar URL" value={user.avatarUrl} mono t={t} />
-          ) : null}
         </View>
 
-        {/* ── Session State ── */}
+        {/* ── Analytics ── */}
         <View style={[styles.card, { backgroundColor: t.background.surface, borderColor: t.border.default }]}>
-          <SectionHeader title="Session State (Redux)" t={t} />
-          <InfoRow label="Authenticated" value={isAuthenticated} t={t} />
-          <InfoRow label="Display Name" value={displayName} t={t} />
-          <InfoRow label="Auth Status" value={authStatus} t={t} />
-          <InfoRow label="Flow Step" value={flowStep} t={t} />
-          <InfoRow label="Backend Ready" value={backendReady} t={t} />
-          <InfoRow label="Verify Purpose" value={verifyPurpose} t={t} />
-          {tempUserIdentifier ? (
-            <InfoRow label="Temp Identifier" value={tempUserIdentifier} t={t} />
-          ) : null}
-          {errorMessage ? (
-            <InfoRow label="Last Error" value={errorMessage} t={t} />
-          ) : null}
+          <SectionHeader title="Analytics" t={t} />
+          <InfoRow label="Total Memories" value={String(user?.analytics?.totalMemories ?? 0)} t={t} />
+          <InfoRow label="Total Files" value={String(user?.analytics?.totalFiles ?? 0)} t={t} />
+          <InfoRow label="Streak Days" value={String(user?.analytics?.streakDays ?? 0)} t={t} />
+          <InfoRow label="Last Login" value={formatDate(user?.analytics?.lastLogin)} t={t} />
         </View>
 
-        {/* ── Reset Password State ── */}
+        {/* ── Settings ── */}
         <View style={[styles.card, { backgroundColor: t.background.surface, borderColor: t.border.default }]}>
-          <SectionHeader title="Password Reset State" t={t} />
-          <InfoRow label="Reset Status" value={resetStatus} t={t} />
-          <InfoRow label="Reset Error" value={resetError} t={t} />
-        </View>
-
-        {/* ── Token Inspector ── */}
-        <View style={[styles.card, { backgroundColor: t.background.surface, borderColor: t.border.default }]}>
-          <SectionHeader title="Token Inspector" t={t} />
-          <View style={styles.tokenBlock}>
-            <Text style={[styles.tokenLabel, { color: t.text.muted }]}>Access Token</Text>
-            <View style={[styles.tokenBox, { backgroundColor: t.background.input, borderColor: t.border.default }]}>
-              <Text style={[styles.tokenValue, { color: t.primary.accent }]} numberOfLines={2} selectable>
-                {maskToken(accessToken)}
-              </Text>
-            </View>
+          <SectionHeader title="Settings" t={t} />
+          <View style={styles.settingsGrid}>
+            <SettingChip label="Memory" enabled={user?.settings?.memoryEnabled} t={t} />
+            <SettingChip label="Vision" enabled={user?.settings?.visionEnabled} t={t} />
+            <SettingChip label="Notifications" enabled={user?.settings?.notificationsEnabled} t={t} />
+            <SettingChip label="Reasoning" enabled={user?.settings?.reasoningEnabled} t={t} />
+            <SettingChip label="Auto Tagging" enabled={user?.settings?.autoTagging} t={t} />
+            <SettingChip label="Personalized LLM" enabled={user?.settings?.personalizedLLM} t={t} />
           </View>
-          <View style={[styles.tokenBlock, { marginTop: 12 }]}>
-            <Text style={[styles.tokenLabel, { color: t.text.muted }]}>Refresh Token</Text>
-            <View style={[styles.tokenBox, { backgroundColor: t.background.input, borderColor: t.border.default }]}>
-              <Text style={[styles.tokenValue, { color: t.text.secondary }]} numberOfLines={2} selectable>
-                {maskToken(refreshToken)}
-              </Text>
-            </View>
-          </View>
+        </View>
+
+        {/* ── Cognitive Profile ── */}
+        <View style={[styles.card, { backgroundColor: t.background.surface, borderColor: t.border.default }]}>
+          <SectionHeader title="Cognitive Profile" t={t} />
+          <InfoRow label="Learning Style" value={user?.cognitiveProfile?.learningStyle} t={t} />
+          <InfoRow label="Reasoning Style" value={user?.cognitiveProfile?.reasoningStyle} t={t} />
+          <BadgeRow label="Interests" items={user?.cognitiveProfile?.interests ?? []} t={t} />
+          <BadgeRow label="Difficulty Areas" items={user?.cognitiveProfile?.difficultyAreas ?? []} t={t} />
         </View>
 
         {/* ── Log Out ── */}
@@ -350,15 +354,8 @@ const styles = StyleSheet.create({
 
   scroll: { paddingBottom: 32 },
 
-  // Token inspector
-  tokenBlock: {},
-  tokenLabel: { fontSize: 12, marginBottom: 6 },
-  tokenBox: {
-    borderRadius: 10,
-    borderWidth: 1,
-    padding: 10,
-  },
-  tokenValue: { fontSize: 12, fontFamily: 'monospace', letterSpacing: 0.3 },
+  // Settings grid
+  settingsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingVertical: 12 },
 
   // Logout
   logoutBtn: {

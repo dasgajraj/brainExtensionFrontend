@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,21 +6,23 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  SafeAreaView,
   StatusBar,
   ActivityIndicator,
   Alert,
+  Clipboard,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
-import { RootState } from '../redux/RootReducer';
-import { getTokens } from '../theme/tokens';
-import { getBrainResult, BrainRequest } from '../api/brain.api';
+import { RootState } from '../../redux/RootReducer';
+import { getTokens } from '../../theme/tokens';
+import { getBrainResult, BrainRequest } from '../../api/brain.api';
 import {
   getHistory,
   removeFromHistory,
   clearHistory,
   BrainHistoryItem,
-} from '../services/brainHistory.service';
+} from '../../services/brainHistory.service';
+import { MarkdownText } from '../../utils/markdownRenderer';
 
 type T = ReturnType<typeof getTokens>;
 
@@ -277,6 +279,50 @@ export default function BrainResultScreen({ onBack, prefillId }: BrainResultScre
   // ── History state ───────────────────────────────────────────────────────
   const [history, setHistory] = useState<BrainHistoryItem[]>([]);
 
+  // ── Auto-poll when result is still processing ───────────────────────────
+  const autoPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoPollCountRef = useRef(0);
+  const AUTO_POLL_INTERVAL_MS = 20_000; // 20 s
+  const AUTO_POLL_MAX = 5;              // max 5 auto-polls per result
+
+  const stopAutoPoll = useCallback(() => {
+    if (autoPollRef.current) {
+      clearInterval(autoPollRef.current);
+      autoPollRef.current = null;
+    }
+  }, []);
+
+  // Start auto-polling whenever a result comes back as "processing"
+  useEffect(() => {
+    stopAutoPoll();
+    if (result?.status !== 'processing') return;
+    autoPollCountRef.current = 0;
+    console.log('⏳ [BrainResultScreen] result is processing — starting auto-poll every 20 s (max 5)');
+    autoPollRef.current = setInterval(async () => {
+      autoPollCountRef.current += 1;
+      if (autoPollCountRef.current > AUTO_POLL_MAX) {
+        console.warn('⏰ [BrainResultScreen] auto-poll max reached, stopping');
+        stopAutoPoll();
+        return;
+      }
+      const id = requestId.trim();
+      if (!id) { stopAutoPoll(); return; }
+      console.log(`🔃 [BrainResultScreen] auto-poll #${autoPollCountRef.current}/${AUTO_POLL_MAX} — id=${id}`);
+      try {
+        const res = await getBrainResult(id);
+        if (res.request.status !== 'processing') {
+          console.log(`🏁 [BrainResultScreen] auto-poll — terminal status: ${res.request.status}`);
+          stopAutoPoll();
+        }
+        setResult(res.request);
+      } catch (e) {
+        console.warn('⚠️ [BrainResultScreen] auto-poll error (silent)', e);
+      }
+    }, AUTO_POLL_INTERVAL_MS);
+    return stopAutoPoll;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result?.status]);
+
   const loadHistory = useCallback(async () => {
     console.log('📚 [BrainResultScreen] loadHistory — reading @brain_ask_history from AsyncStorage');
     const items = await getHistory();
@@ -318,36 +364,48 @@ export default function BrainResultScreen({ onBack, prefillId }: BrainResultScre
   };
 
   const handleSelectHistory = (item: BrainHistoryItem) => {
-    console.log('📌 [BrainResultScreen] handleSelectHistory — prefilling id from history', { requestId: item.requestId, query: item.query.slice(0, 60) });
+    console.log('📌 [BrainResultScreen] handleSelectHistory — fetching id from history', { requestId: item.requestId, query: item.query.slice(0, 60) });
     setRequestId(item.requestId);
     setResult(null);
     setErrorMsg('');
+    fetchById(item.requestId);
   };
 
-  const handleFetch = async () => {
-    console.log('📊 [BrainResultScreen] handleFetch — GET /brain/result/:id', { requestId });
-    const id = requestId.trim();
-    if (!id) {
-      setErrorMsg('Please enter a Request ID.');
-      return;
-    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const fetchById = useCallback(async (id: string) => {
+    const trimmedId = id.trim();
+    if (!trimmedId) return;
+    console.log('📊 [BrainResultScreen] fetchById — GET /brain/result/:id', { id: trimmedId });
+    stopAutoPoll();
     setLoading(true);
     setResult(null);
     setErrorMsg('');
     try {
-      const res = await getBrainResult(id);
-      console.log('✅ [BrainResultScreen] handleFetch — success', { status: res.request.status, lobe: res.request.selectedLobe });
+      const res = await getBrainResult(trimmedId);
+      console.log('✅ [BrainResultScreen] fetchById — success', { status: res.request.status, lobe: res.request.selectedLobe });
       setResult(res.request);
     } catch (err: any) {
-      console.error('❌ [BrainResultScreen] handleFetch — error', err);
-      setErrorMsg(err?.message ?? 'Failed to fetch result. Check the Request ID and try again.');
+      console.error('❌ [BrainResultScreen] fetchById — error', err);
+      setErrorMsg(err?.message ?? 'Failed to fetch result. Check the Request ID.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [stopAutoPoll]);
+
+  // Auto-fetch when navigated from BrainAskScreen with a prefillId
+  useEffect(() => {
+    if (prefillId) {
+      console.log('🚀 [BrainResultScreen] prefillId auto-fetch —', prefillId);
+      fetchById(prefillId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleFetch = () => fetchById(requestId);
 
   const handleClear = () => {
-    console.log('[BrainResultScreen] handleClear — clearing result and input');
+    console.log('🧹 [BrainResultScreen] handleClear — clearing result and input');
+    stopAutoPoll();
     setRequestId('');
     setResult(null);
     setErrorMsg('');
@@ -390,50 +448,48 @@ export default function BrainResultScreen({ onBack, prefillId }: BrainResultScre
           </>
         )}
 
-        {/* ── Request ID Input ── */}
-        <SectionLabel text="Request ID" t={t} />
-        <View style={[styles.inputRow, { backgroundColor: t.background.input, borderColor: t.border.default }]}>
+        {/* ── Compact Search Bar ── */}
+        <View style={[styles.searchBar, { backgroundColor: t.background.input, borderColor: t.border.default }]}>
           <Text style={[styles.hashIcon, { color: t.text.muted }]}>#</Text>
           <TextInput
             style={[styles.idInput, { color: t.text.primary }]}
             value={requestId}
             onChangeText={v => { setRequestId(v); setErrorMsg(''); }}
-            placeholder="e.g. 69283596f087338a7e26098d"
+            placeholder="Paste Request ID…"
             placeholderTextColor={t.text.placeholder}
             autoCapitalize="none"
             autoCorrect={false}
-            returnKeyType="done"
+            returnKeyType="search"
             onSubmitEditing={handleFetch}
           />
-          {requestId.length > 0 && (
-            <TouchableOpacity onPress={handleClear} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={[styles.clearIcon, { color: t.text.muted }]}>✕</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* ── Hint ── */}
-        <Text style={[styles.hint, { color: t.text.muted }]}>
-          Enter the Request ID returned from POST /brain/ask
-        </Text>
-
-        {/* ── Fetch Button ── */}
-        <TouchableOpacity
-          style={[styles.fetchBtn, { backgroundColor: t.primary.default, opacity: loading ? 0.7 : 1 }]}
-          onPress={handleFetch}
-          disabled={loading}
-          activeOpacity={0.8}>
           {loading ? (
-            <ActivityIndicator color={t.text.onPrimary} />
-          ) : (
-            <Text style={[styles.fetchBtnText, { color: t.text.onPrimary }]}>🔍  Fetch Result</Text>
-          )}
-        </TouchableOpacity>
+            <ActivityIndicator size="small" color={t.primary.accent} />
+          ) : requestId.length > 0 ? (
+            <TouchableOpacity
+              style={[styles.searchGoBtn, { backgroundColor: t.primary.default }]}
+              onPress={handleFetch}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              activeOpacity={0.8}>
+              <Text style={[styles.searchGoBtnText, { color: t.text.onPrimary }]}>Go</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
 
         {/* ── Error ── */}
         {errorMsg !== '' && (
           <View style={[styles.errorBox, { backgroundColor: t.status.errorSubtle, borderColor: t.status.error }]}>
             <Text style={[styles.errorText, { color: t.status.error }]}>⚠  {errorMsg}</Text>
+          </View>
+        )}
+
+        {/* ── Empty state ── */}
+        {!result && !loading && history.length === 0 && errorMsg === '' && (
+          <View style={styles.emptyState}>
+            <Text style={[styles.emptyIcon]}>🧠</Text>
+            <Text style={[styles.emptyTitle, { color: t.text.primary }]}>No result yet</Text>
+            <Text style={[styles.emptyHint, { color: t.text.muted }]}>
+              Paste a Request ID above, or go to Brain Ask to send a new question.
+            </Text>
           </View>
         )}
 
@@ -452,11 +508,30 @@ export default function BrainResultScreen({ onBack, prefillId }: BrainResultScre
               )}
             </View>
 
+            {/* ── Context Chips ── */}
+            <View style={styles.contextChipsRow}>
+              {result.workspaceId ? (
+                <View style={[styles.contextChip, { backgroundColor: t.primary.default + '18', borderColor: t.primary.default + '50' }]}>
+                  <Text style={[styles.contextChipLabel, { color: t.text.muted }]}>workspace</Text>
+                  <Text style={[styles.contextChipValue, { color: t.primary.accent }]}>{result.workspaceId}</Text>
+                </View>
+              ) : null}
+              {result.mode ? (
+                <View style={[styles.contextChip, { backgroundColor: t.background.surface, borderColor: t.border.default }]}>
+                  <Text style={[styles.contextChipLabel, { color: t.text.muted }]}>mode</Text>
+                  <Text style={[styles.contextChipValue, { color: t.text.primary }]}>{result.mode}</Text>
+                </View>
+              ) : null}
+              <View style={[styles.contextChip, { backgroundColor: t.primary.default + '18', borderColor: t.primary.default + '50' }]}>
+                <Text style={[styles.contextChipLabel, { color: t.text.muted }]}>lobe</Text>
+                <Text style={[styles.contextChipValue, { color: t.primary.accent }]}>🧠 {result.selectedLobe}</Text>
+              </View>
+            </View>
+
             {/* ── IDs ── */}
-            <SectionLabel text="Identifiers" t={t} />
+            <SectionLabel text="Request ID" t={t} />
             <View style={[styles.card, { backgroundColor: t.background.surface, borderColor: t.border.default }]}>
               <MetaRow label="Request ID" value={result._id} mono t={t} />
-              <MetaRow label="User ID" value={result.userId} mono t={t} />
             </View>
 
             {/* ── Query ── */}
@@ -481,11 +556,13 @@ export default function BrainResultScreen({ onBack, prefillId }: BrainResultScre
                 valueColor={t.primary.accent}
                 t={t}
               />
-              <View style={[metaRowStyles.row, { borderBottomColor: t.border.subtle }]}>
+              <View style={[styles.routerReasonWrap, { borderBottomColor: t.border.subtle }]}>
                 <Text style={[metaRowStyles.label, { color: t.text.muted }]}>Router Reason</Text>
-                <Text style={[styles.routerReason, { color: t.text.secondary }]} numberOfLines={3}>
-                  {result.routerReason}
-                </Text>
+                <View style={[styles.routerReasonChip, { backgroundColor: t.background.screen, borderColor: t.border.default }]}>
+                  <Text style={[styles.routerReasonText, { color: t.text.secondary }]}>
+                    {result.routerReason}
+                  </Text>
+                </View>
               </View>
               <View style={{ paddingVertical: 12 }}>
                 <ConfidenceBar value={result.routerConfidence} t={t} />
@@ -508,16 +585,23 @@ export default function BrainResultScreen({ onBack, prefillId }: BrainResultScre
                 <SectionLabel text="Brain Response" t={t} />
                 <View style={[styles.outputCard, { backgroundColor: t.background.surface, borderColor: t.primary.default + '40' }]}>
                   {/* lobe chip */}
-                  <View style={styles.lobeRow}>
+                  <View style={styles.outputCardHeader}>
                     <View style={[styles.lobeBadge, { backgroundColor: t.primary.default + '1A', borderColor: t.primary.default + '50' }]}>
                       <Text style={[styles.lobeBadgeText, { color: t.primary.accent }]}>
                         🧠 {result.selectedLobe} lobe
                       </Text>
                     </View>
+                    <TouchableOpacity
+                      style={[styles.copyBtn, { borderColor: t.border.default, backgroundColor: t.background.screen }]}
+                      onPress={() => {
+                        Clipboard.setString(result.output ?? '');
+                        Alert.alert('Copied', 'Response copied to clipboard.');
+                      }}
+                      activeOpacity={0.7}>
+                      <Text style={[styles.copyBtnText, { color: t.text.muted }]}>Copy</Text>
+                    </TouchableOpacity>
                   </View>
-                  <Text style={[styles.outputText, { color: t.text.primary }]} selectable>
-                    {result.output}
-                  </Text>
+                  <MarkdownText content={result.output} t={t} fontSize={15} lineHeight={26} />
                 </View>
               </>
             )}
@@ -553,28 +637,30 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { paddingHorizontal: 16, paddingBottom: 32 },
 
-  // Input row
-  inputRow: {
+  // Search bar (compact)
+  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
     borderRadius: 14,
     paddingHorizontal: 14,
-    paddingVertical: 2,
+    paddingVertical: 4,
     gap: 8,
+    marginBottom: 12,
   },
   hashIcon: { fontSize: 18, fontWeight: '700' },
-  idInput: { flex: 1, fontSize: 14, paddingVertical: 12, fontFamily: 'monospace' },
-  clearIcon: { fontSize: 16, paddingHorizontal: 4 },
+  idInput: { flex: 1, fontSize: 14, paddingVertical: 10, fontFamily: 'monospace' },
+  searchGoBtn: { borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7 },
+  searchGoBtnText: { fontSize: 13, fontWeight: '700' },
 
-  hint: { fontSize: 11, marginTop: 6, marginBottom: 4, marginLeft: 4 },
-
-  // Fetch button
-  fetchBtn: { borderRadius: 16, paddingVertical: 15, alignItems: 'center', marginTop: 20, justifyContent: 'center', flexDirection: 'row' },
-  fetchBtnText: { fontSize: 16, fontWeight: '700' },
+  // Empty state
+  emptyState: { alignItems: 'center', paddingVertical: 48, paddingHorizontal: 24 },
+  emptyIcon: { fontSize: 44, marginBottom: 14 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8 },
+  emptyHint: { fontSize: 14, lineHeight: 21, textAlign: 'center' },
 
   // Error
-  errorBox: { borderRadius: 12, borderWidth: 1, padding: 14, marginTop: 16 },
+  errorBox: { borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 12 },
   errorText: { fontSize: 13, lineHeight: 19, fontWeight: '500' },
 
   // Status row
@@ -591,15 +677,25 @@ const styles = StyleSheet.create({
   queryLabel: { fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 },
   queryText: { fontSize: 15, lineHeight: 23, fontWeight: '500' },
 
-  // Router
-  routerReason: { fontSize: 12, flex: 1.6, textAlign: 'right', lineHeight: 17 },
+  // Context chips
+  contextChipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, marginBottom: 12 },
+  contextChip: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8, alignItems: 'center', minWidth: 90 },
+  contextChipLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 },
+  contextChipValue: { fontSize: 13, fontWeight: '700', textTransform: 'capitalize' },
+
+  // Router reason
+  routerReasonWrap: { paddingVertical: 12, borderBottomWidth: 1 },
+  routerReasonChip: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8, marginTop: 8 },
+  routerReasonText: { fontSize: 13, lineHeight: 20 },
 
   // Output
   outputCard: { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 4 },
-  lobeRow: { marginBottom: 12 },
+  outputCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   lobeBadge: { alignSelf: 'flex-start', borderRadius: 10, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
   lobeBadgeText: { fontSize: 12, fontWeight: '700' },
-  outputText: { fontSize: 14, lineHeight: 23 },
+  outputText: { fontSize: 15, lineHeight: 26 },
+  copyBtn: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 5 },
+  copyBtnText: { fontSize: 12, fontWeight: '600' },
 
   // Refetch
   refetchBtn: { borderWidth: 1, borderRadius: 14, paddingVertical: 13, alignItems: 'center', marginTop: 16, flexDirection: 'row', justifyContent: 'center' },

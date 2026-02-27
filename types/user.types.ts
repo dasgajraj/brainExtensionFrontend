@@ -7,6 +7,29 @@
  * Add fields here as the backend API evolves.
  */
 
+export interface UserAnalytics {
+  totalMemories?: number;
+  totalFiles?: number;
+  streakDays?: number;
+  lastLogin?: string;
+}
+
+export interface UserSettings {
+  memoryEnabled?: boolean;
+  visionEnabled?: boolean;
+  notificationsEnabled?: boolean;
+  reasoningEnabled?: boolean;
+  autoTagging?: boolean;
+  personalizedLLM?: boolean;
+}
+
+export interface UserCognitiveProfile {
+  learningStyle?: string;
+  reasoningStyle?: string;
+  interests?: string[];
+  difficultyAreas?: string[];
+}
+
 export interface User {
   /** MongoDB ObjectId — backend uses _id, not id */
   _id: string;
@@ -18,4 +41,7 @@ export interface User {
   plan?: string;
   createdAt: string;
   updatedAt: string;
+  analytics?: UserAnalytics;
+  settings?: UserSettings;
+  cognitiveProfile?: UserCognitiveProfile;
 }

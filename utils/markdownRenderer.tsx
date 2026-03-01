@@ -100,6 +100,7 @@ export function MarkdownText({
   fontSize = 14,
   lineHeight = 24,
 }: MarkdownProps) {
+  if (!content) { return null; }
   const lines = content.split('\n');
   const nodes: React.ReactNode[] = [];
   let bulletBuffer: Array<{ text: string; ordered: boolean; num: number }> = [];

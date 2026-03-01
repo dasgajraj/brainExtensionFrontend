@@ -86,7 +86,7 @@ function HistoryCard({ item, onPress, t }: { item: VisionHistoryItem; onPress: (
         <Text style={[hcStyles.time, { color: t.text.muted }]}>{timeAgo(item.analyzedAt)}</Text>
       </View>
       <Text style={[hcStyles.preview, { color: t.text.secondary }]} numberOfLines={2}>
-        {item.explanation.replace(/[*`#>]/g, '').trim()}
+        {(item.explanation ?? '').replace(/[*`#>]/g, '').trim()}
       </Text>
     </TouchableOpacity>
   );
@@ -151,7 +151,7 @@ export default function VisionScreen({ onBack }: VisionScreenProps) {
 
   const pickFromCamera = () => {
     launchCamera(
-      { mediaType: 'photo', includeBase64: true, quality: 0.8, maxWidth: 1024, maxHeight: 1024 },
+      { mediaType: 'photo', includeBase64: true, quality: 0.8, maxWidth: 1024, maxHeight: 1024, saveToPhotos: false },
       (response) => {
         if (response.didCancel) { return; }
         if (response.errorCode) { setErrorMsg(response.errorMessage ?? 'Failed to open camera.'); return; }

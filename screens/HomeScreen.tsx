@@ -22,8 +22,10 @@ import BrainResultScreen from './BRAIN/BrainResultScreen';
 import TranslateScreen from './BRAIN/TranslateScreen';
 import VisionScreen from './BRAIN/VisionScreen';
 import DreamsScreen from './BRAIN/DreamsScreen';
+import NeuralGraphScreen from './BRAIN/NeuralGraphScreen';
+import FilesScreen from './Files/FilesScreen';
 
-type Page = 'home' | 'profile' | 'brainAsk' | 'brainResult' | 'translate' | 'vision' | 'dreams';
+type Page = 'home' | 'profile' | 'brainAsk' | 'brainResult' | 'translate' | 'vision' | 'dreams' | 'neural' | 'files';
 
 const { width } = Dimensions.get('window');
 const CARD_W = (width - 48) / 2;
@@ -129,6 +131,8 @@ function HomeScreen() {
   if (page === 'translate') return <TranslateScreen onBack={() => navigate('home')} />;
   if (page === 'vision') return <VisionScreen onBack={() => navigate('home')} />;
   if (page === 'dreams') return <DreamsScreen onBack={() => navigate('home')} />;
+  if (page === 'neural') return <NeuralGraphScreen onBack={() => navigate('home')} />;
+  if (page === 'files') return <FilesScreen onBack={() => navigate('home')} />;
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: t.background.screen }]}>
@@ -243,6 +247,22 @@ function HomeScreen() {
             description="Explore your cognitive dream journal — subconscious insights and actions"
             accentColor="#7c3aed"
             onPress={() => navigate('dreams')}
+            t={t}
+          />
+          <NavCard
+            icon="🕸️"
+            title="Neural Graph"
+            description="Visualise semantic connections between your memories and files"
+            accentColor="#ec4899"
+            onPress={() => navigate('neural')}
+            t={t}
+          />
+          <NavCard
+            icon="📁"
+            title="My Files"
+            description="Upload and manage files — images, PDFs, code and more"
+            accentColor="#0ea5e9"
+            onPress={() => navigate('files')}
             t={t}
           />
         </View>

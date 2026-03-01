@@ -104,6 +104,42 @@ export interface DreamsResponse {
   journal: DreamEntry[];
 }
 
+export interface GraphRequest {
+  query: string;
+  targetLanguage: string;
+  mode: string;       // e.g. 'study' | 'explore' | 'general'
+  workspaceId: string;
+}
+
+export interface GraphNode {
+  id: string;
+  label: string;
+  fullText: string;
+  type: 'memory' | 'file' | string;
+  group: 'answer' | 'file' | string;
+  val: number;        // relative size / strength weight
+}
+
+export interface GraphLink {
+  source: string;
+  target: string;
+  strength: number;
+}
+
+export interface GraphStats {
+  totalNodes: number;
+  totalLinks: number;
+}
+
+export interface GraphResponse {
+  status: string;
+  stats: GraphStats;
+  data: {
+    nodes: GraphNode[];
+    links: GraphLink[];
+  };
+}
+
 // ─── API Functions ────────────────────────────────────────────────────────────
 
 /**
@@ -226,10 +262,40 @@ export async function analyzeVision(payload: BrainVisionRequest): Promise<BrainV
         timeout: 60_000, // vision can take longer
       },
     );
-    console.log('✅ [brain.api] analyzeVision ← success', { explanationLen: data.explanation?.length });
-    return data;
+    // Server may return explanation in different field names
+    const explanation = data.explanation ?? (data as any).result ?? (data as any).analysis ?? (data as any).output ?? '';
+    console.log('✅ [brain.api] analyzeVision ← success', { explanationLen: explanation.length });
+    return { ...data, explanation };
   } catch (error) {
     console.error('❌ [brain.api] analyzeVision ← error', error);
+    throw normaliseAxiosError(error);
+  }
+}
+
+/**
+ * GET /brain/graph  — semantic memory graph for a query
+ * Note: Axios sends body as { data } for GET requests.
+ */
+export async function getGraph(payload: GraphRequest): Promise<GraphResponse> {
+  console.log('🕸️ [brain.api] getGraph → GET /brain/graph', payload);
+  try {
+    const accessToken = await tokenService.getAccessToken();
+    const { data } = await axios.get<GraphResponse>(
+      `${BASE_URL}/brain/graph`,
+      {
+        data: payload,          // Axios forwards as request body for GET
+        headers: {
+          'Content-Type': 'application/json',
+          'x-brain-pin': BRAIN_PIN,
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        timeout: 30_000,
+      },
+    );
+    console.log('✅ [brain.api] getGraph ← success', { nodes: data.stats?.totalNodes, links: data.stats?.totalLinks });
+    return data;
+  } catch (error) {
+    console.error('❌ [brain.api] getGraph ← error', error);
     throw normaliseAxiosError(error);
   }
 }

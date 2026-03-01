@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,15 +9,17 @@ import {
   Alert,
   Dimensions,
   BackHandler,
+  Animated,
 } from 'react-native';
-import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../redux/RootReducer';
 import { AppDispatch } from '../redux/Store';
 import { toggleTheme } from '../redux/Action';
 import { logoutThunk } from '../redux/authSlice';
-import { getTokens } from '../theme/tokens';
+import { getTokens, AppTokens } from '../theme/tokens';
+
+// ── Screens
 import ProfileScreen from './ProfileScreen';
 import BrainAskScreen from './BRAIN/BrainAskScreen';
 import BrainResultScreen from './BRAIN/BrainResultScreen';
@@ -28,91 +30,180 @@ import NeuralGraphScreen from './BRAIN/NeuralGraphScreen';
 import FilesScreen from './Files/FilesScreen';
 import AgentScreen from './BRAIN/AgentScreen';
 
-type Page = 'home' | 'profile' | 'brainAsk' | 'brainResult' | 'translate' | 'vision' | 'dreams' | 'neural' | 'files' | 'agent';
+// ── Shared UI
+import {
+  IconMenu,
+  IconBrain,
+  IconClipboard,
+  IconGlobe,
+  IconEye,
+  IconStar,
+  IconNetwork,
+  IconFolder,
+  IconBot,
+  IconUser,
+  IconSun,
+  IconMoon,
+  IconActivity,
+  IconChevronRight,
+  IconZap,
+  IconLogOut,
+} from '../components/ui/Icons';
+import Sidebar from '../components/ui/Sidebar';
+import BottomNavBar from '../components/ui/BottomNavBar';
 
-const { width } = Dimensions.get('window');
-const CARD_W = (width - 48) / 2;
+// ─── Types ──────────────────────────────────────────────────────────────────
+type Page =
+  | 'home'
+  | 'profile'
+  | 'brainAsk'
+  | 'brainResult'
+  | 'translate'
+  | 'vision'
+  | 'dreams'
+  | 'neural'
+  | 'files'
+  | 'agent';
 
-type T = ReturnType<typeof getTokens>;
+/** Pages that show in the bottom nav bar (main tabs) */
+const MAIN_TABS = new Set<Page>(['home', 'brainAsk', 'files', 'agent', 'profile']);
 
-// ─── Nav Card ─────────────────────────────────────────────────────────────────
-interface NavCardProps {
-  icon: string;
+/** Pages rendered as full-screen overlays (their own back buttons) */
+const OVERLAY_PAGES = new Set<Page>(['brainResult', 'translate', 'vision', 'dreams', 'neural']);
+
+const { width: SCREEN_W } = Dimensions.get('window');
+const CARD_W = (SCREEN_W - 48) / 2;
+
+// ─── Feature Card Data ──────────────────────────────────────────────────────
+interface FeatureCardData {
+  key: Page;
+  icon: React.ComponentType<{ size?: number; color: string }>;
   title: string;
   description: string;
   accentColor: string;
-  onPress: () => void;
-  t: T;
 }
-function NavCard({ icon, title, description, accentColor, onPress, t }: NavCardProps) {
+
+const FEATURE_CARDS: FeatureCardData[] = [
+  { key: 'brainAsk', icon: IconBrain, title: 'Ask Brain', description: 'Query the Cognitive OS with any question across your workspaces', accentColor: '#8b5cf6' },
+  { key: 'profile', icon: IconUser, title: 'Profile', description: 'View your account info, analytics, settings & cognitive profile', accentColor: '#06b6d4' },
+  { key: 'brainResult', icon: IconClipboard, title: 'Brain Result', description: 'Fetch the full output of any request using its ID', accentColor: '#f59e0b' },
+  { key: 'translate', icon: IconGlobe, title: 'Translate', description: 'Translate any text into Hindi, Hinglish, Tamil and more', accentColor: '#a78bfa' },
+  { key: 'vision', icon: IconEye, title: 'Vision', description: 'Analyse images with AI — get detailed explanations instantly', accentColor: '#10b981' },
+  { key: 'dreams', icon: IconStar, title: 'Brain Dreams', description: 'Explore your cognitive dream journal — subconscious insights', accentColor: '#7c3aed' },
+  { key: 'neural', icon: IconNetwork, title: 'Neural Graph', description: 'Visualise semantic connections between your memories and files', accentColor: '#ec4899' },
+  { key: 'files', icon: IconFolder, title: 'My Files', description: 'Upload and manage files — images, PDFs, code and more', accentColor: '#0ea5e9' },
+  { key: 'agent', icon: IconBot, title: 'AI Agent', description: 'Remotely control your desktop Chrome via AI agent commands', accentColor: '#06b6d4' },
+];
+
+// ─── Feature Card ───────────────────────────────────────────────────────────
+interface NavCardProps {
+  data: FeatureCardData;
+  onPress: () => void;
+  t: AppTokens;
+  index: number;
+}
+function NavCard({ data, onPress, t, index }: NavCardProps) {
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      delay: index * 50,
+      damping: 18,
+      stiffness: 200,
+      mass: 0.7,
+    }).start();
+  }, [scaleAnim, index]);
+
+  const Icon = data.icon;
   return (
-    <TouchableOpacity
-      style={[
-        navCardStyles.card,
-        {
-          width: CARD_W,
-          backgroundColor: t.background.surface,
-          borderColor: accentColor + '40',
-        },
-      ]}
-      onPress={onPress}
-      activeOpacity={0.82}>
-      <View style={[navCardStyles.iconWrap, { backgroundColor: accentColor + '1A' }]}>
-        <Text style={navCardStyles.iconText}>{icon}</Text>
-      </View>
-      <Text style={[navCardStyles.title, { color: t.text.primary }]}>{title}</Text>
-      <Text style={[navCardStyles.desc, { color: t.text.muted }]} numberOfLines={2}>
-        {description}
-      </Text>
-      <View style={[navCardStyles.arrow, { backgroundColor: accentColor + '22' }]}>
-        <Text style={[navCardStyles.arrowText, { color: accentColor }]}>→</Text>
-      </View>
-    </TouchableOpacity>
+    <Animated.View style={{ transform: [{ scale: scaleAnim }], opacity: scaleAnim }}>
+      <TouchableOpacity
+        style={[
+          cardStyles.card,
+          {
+            width: CARD_W,
+            backgroundColor: t.background.surface,
+            borderColor: data.accentColor + '40',
+          },
+        ]}
+        onPress={onPress}
+        activeOpacity={0.82}>
+        <View style={[cardStyles.iconWrap, { backgroundColor: data.accentColor + '1A' }]}>
+          <Icon size={22} color={data.accentColor} />
+        </View>
+        <Text style={[cardStyles.title, { color: t.text.primary }]}>{data.title}</Text>
+        <Text style={[cardStyles.desc, { color: t.text.muted }]} numberOfLines={2}>
+          {data.description}
+        </Text>
+        <View style={[cardStyles.arrow, { backgroundColor: data.accentColor + '22' }]}>
+          <IconChevronRight size={14} color={data.accentColor} />
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
-const navCardStyles = StyleSheet.create({
-  card: {
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: 16,
-    marginBottom: 12,
-  },
-  iconWrap: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  iconText: { fontSize: 22 },
+const cardStyles = StyleSheet.create({
+  card: { borderRadius: 18, borderWidth: 1, padding: 16, marginBottom: 12 },
+  iconWrap: { width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   title: { fontSize: 15, fontWeight: '700', marginBottom: 4 },
   desc: { fontSize: 12, lineHeight: 17, marginBottom: 12 },
   arrow: { alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  arrowText: { fontSize: 14, fontWeight: '700' },
 });
 
-// ─── Main Screen ─────────────────────────────────────────────────────────────
+// ─── Main Screen ────────────────────────────────────────────────────────────
 function HomeScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const themeMode = useSelector((state: RootState) => state.theme.mode);
+  const isDark = themeMode === 'dark';
   const user = useSelector((state: RootState) => state.auth?.user ?? null);
   const t = getTokens(themeMode);
 
   const [page, setPage] = useState<Page>('home');
-  const displayName = user?.name ?? user?.email?.split('@')[0] ?? 'Explorer';
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Intercept Android hardware back — navigate home instead of closing the app
+  const displayName = user?.name ?? user?.email?.split('@')[0] ?? 'Explorer';
+  const userEmail = user?.email ?? '';
+  const userPlan = user?.plan ?? 'Free';
+
+  // Page transition animation
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
+
+  const navigate = useCallback(
+    (target: Page) => {
+      if (target === page) return;
+      // Animate out → switch → animate in
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 0, duration: 120, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: 12, duration: 120, useNativeDriver: true }),
+      ]).start(() => {
+        setPage(target);
+        Animated.parallel([
+          Animated.timing(fadeAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
+          Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, damping: 20, stiffness: 200, mass: 0.7 }),
+        ]).start();
+      });
+    },
+    [page, fadeAnim, slideAnim],
+  );
+
+  // Intercept Android hardware back
   useEffect(() => {
     const handler = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (page !== 'home') {
-        setPage('home');
-        return true; // handled — prevent app exit
+      if (sidebarOpen) {
+        setSidebarOpen(false);
+        return true;
       }
-      return false; // let the OS handle it (exit from home)
+      if (page !== 'home') {
+        navigate('home');
+        return true;
+      }
+      return false;
     });
     return () => handler.remove();
-  }, [page]);
+  }, [page, sidebarOpen, navigate]);
 
   const avatarLetters = displayName
     .trim()
@@ -122,252 +213,238 @@ function HomeScreen() {
     .join('')
     .toUpperCase();
 
-  const navigate = (target: Page) => {
-    console.log(`🗺️ [HomeScreen] navigate: ${page} → ${target}`);
-    setPage(target);
-  };
-
   const handleLogout = () =>
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Log Out',
         style: 'destructive',
-        onPress: () => {
-          console.log('🚪 [HomeScreen] user confirmed logout — dispatching logoutThunk');
-          dispatch(logoutThunk() as any);
-        },
+        onPress: () => dispatch(logoutThunk() as any),
       },
     ]);
 
-  if (page === 'profile') return <ProfileScreen onBack={() => navigate('home')} />;
-  if (page === 'brainAsk') return <BrainAskScreen onBack={() => navigate('home')} />;
-  if (page === 'brainResult') return <BrainResultScreen onBack={() => navigate('home')} />;
-  if (page === 'translate') return <TranslateScreen onBack={() => navigate('home')} />;
-  if (page === 'vision') return <VisionScreen onBack={() => navigate('home')} />;
-  if (page === 'dreams') return <DreamsScreen onBack={() => navigate('home')} />;
-  if (page === 'neural') return <NeuralGraphScreen onBack={() => navigate('home')} />;
-  if (page === 'files') return <FilesScreen onBack={() => navigate('home')} />;
-  if (page === 'agent') return <AgentScreen onBack={() => navigate('home')} />;
+  // ── Overlay pages — full-screen, managed by the sub-screen's own header
+  if (OVERLAY_PAGES.has(page)) {
+    const overlayMap: Record<string, React.ReactNode> = {
+      brainResult: <BrainResultScreen onBack={() => navigate('home')} />,
+      translate: <TranslateScreen onBack={() => navigate('home')} />,
+      vision: <VisionScreen onBack={() => navigate('home')} />,
+      dreams: <DreamsScreen onBack={() => navigate('home')} />,
+      neural: <NeuralGraphScreen onBack={() => navigate('home')} />,
+    };
+    return <>{overlayMap[page]}</>;
+  }
+
+  // ── Render the active main-tab content
+  const renderTabContent = () => {
+    switch (page) {
+      case 'brainAsk':
+        return <BrainAskScreen onBack={() => navigate('home')} />;
+      case 'files':
+        return <FilesScreen onBack={() => navigate('home')} />;
+      case 'agent':
+        return <AgentScreen onBack={() => navigate('home')} />;
+      case 'profile':
+        return <ProfileScreen onBack={() => navigate('home')} />;
+      default:
+        return renderDashboard();
+    }
+  };
+
+  // ── Dashboard (home tab)
+  const renderDashboard = () => (
+    <ScrollView
+      contentContainerStyle={styles.scroll}
+      showsVerticalScrollIndicator={false}>
+
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={[styles.menuBtn, { backgroundColor: t.background.surface, borderColor: t.border.default }]}
+          onPress={() => setSidebarOpen(true)}
+          activeOpacity={0.8}>
+          <IconMenu size={20} color={t.text.primary} />
+        </TouchableOpacity>
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={[styles.greeting, { color: t.text.muted }]}>Welcome back,</Text>
+          <Text style={[styles.username, { color: t.text.primary }]}>{displayName}</Text>
+        </View>
+        <TouchableOpacity
+          style={[styles.themeBtn, { backgroundColor: t.background.surface, borderColor: t.border.default }]}
+          onPress={() => dispatch(toggleTheme())}
+          activeOpacity={0.8}>
+          {isDark ? <IconSun size={17} color={t.text.primary} /> : <IconMoon size={17} color={t.text.primary} />}
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.avatarBtn, { backgroundColor: t.primary.default + '22', borderColor: t.primary.default }]}
+          onPress={() => navigate('profile')}
+          activeOpacity={0.8}>
+          <Text style={[styles.avatarText, { color: t.primary.accent }]}>{avatarLetters}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* ── Status Banner ──────────────────────────────────────────────── */}
+      <View style={[styles.banner, { backgroundColor: t.primary.default + '12', borderColor: t.primary.default + '35' }]}>
+        <View style={[styles.bannerIconWrap, { backgroundColor: t.primary.default + '20' }]}>
+          <IconBrain size={22} color={t.primary.accent} />
+        </View>
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={[styles.bannerTitle, { color: t.primary.accent }]}>Cognitive OS Active</Text>
+          <Text style={[styles.bannerSub, { color: t.text.secondary }]}>
+            AI-powered knowledge base — ask, learn & remember
+          </Text>
+        </View>
+        <View style={[styles.statusDot, { backgroundColor: t.status.success }]} />
+      </View>
+
+      {/* ── Info Strip ─────────────────────────────────────────────────── */}
+      <View style={[styles.infoStrip, { backgroundColor: t.background.surface, borderColor: t.border.default }]}>
+        <View style={styles.infoItem}>
+          <IconZap size={14} color={t.primary.accent} />
+          <Text style={[styles.infoValue, { color: t.primary.accent }]}>{userPlan}</Text>
+          <Text style={[styles.infoLabel, { color: t.text.muted }]}>Plan</Text>
+        </View>
+        <View style={[styles.infoDivider, { backgroundColor: t.border.subtle }]} />
+        <View style={styles.infoItem}>
+          <IconActivity size={14} color={user?.emailVerified ? t.status.success : t.status.error} />
+          <Text style={[styles.infoValue, { color: user?.emailVerified ? t.status.success : t.status.error }]}>
+            {user?.emailVerified ? 'Verified' : 'Pending'}
+          </Text>
+          <Text style={[styles.infoLabel, { color: t.text.muted }]}>Email</Text>
+        </View>
+        <View style={[styles.infoDivider, { backgroundColor: t.border.subtle }]} />
+        <View style={styles.infoItem}>
+          <IconUser size={14} color={t.text.primary} />
+          <Text style={[styles.infoValue, { color: t.text.primary }]} numberOfLines={1}>
+            {user?.email?.split('@')[0] ?? '—'}
+          </Text>
+          <Text style={[styles.infoLabel, { color: t.text.muted }]}>Username</Text>
+        </View>
+      </View>
+
+      {/* ── Quick Actions ──────────────────────────────────────────────── */}
+      <Text style={[styles.sectionTitle, { color: t.text.primary }]}>Quick Actions</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.quickRow}>
+        {[
+          { key: 'brainAsk' as Page, icon: IconBrain, label: 'Ask Brain', color: '#8b5cf6' },
+          { key: 'agent' as Page, icon: IconBot, label: 'AI Agent', color: '#06b6d4' },
+          { key: 'files' as Page, icon: IconFolder, label: 'Files', color: '#0ea5e9' },
+          { key: 'neural' as Page, icon: IconNetwork, label: 'Neural Graph', color: '#ec4899' },
+        ].map(q => (
+          <TouchableOpacity
+            key={q.key}
+            style={[styles.quickChip, { backgroundColor: q.color + '14', borderColor: q.color + '30' }]}
+            onPress={() => navigate(q.key)}
+            activeOpacity={0.8}>
+            <q.icon size={16} color={q.color} />
+            <Text style={[styles.quickLabel, { color: q.color }]}>{q.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {/* ── Features Grid ──────────────────────────────────────────────── */}
+      <Text style={[styles.sectionTitle, { color: t.text.primary }]}>All Features</Text>
+      <View style={styles.grid}>
+        {FEATURE_CARDS.map((card, idx) => (
+          <NavCard
+            key={card.key}
+            data={card}
+            index={idx}
+            onPress={() => navigate(card.key)}
+            t={t}
+          />
+        ))}
+      </View>
+
+      {/* ── Bottom spacer for nav bar */}
+      <View style={{ height: 24 }} />
+    </ScrollView>
+  );
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: t.background.screen }]}>
+    <View style={[styles.root, { backgroundColor: t.background.screen }]}>
       <StatusBar
-        barStyle={themeMode === 'dark' ? 'light-content' : 'dark-content'}
+        barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor={t.background.screen}
       />
 
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}>
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        {/* Animated page content */}
+        <Animated.View
+          style={[
+            styles.pageContent,
+            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+          ]}>
+          {renderTabContent()}
+        </Animated.View>
+      </SafeAreaView>
 
-        {/* ── Header ─────────────────────────────────────────────────────── */}
-        <View style={styles.header}>
-          <View>
-            <Text style={[styles.greeting, { color: t.text.muted }]}>Welcome back,</Text>
-            <Text style={[styles.username, { color: t.text.primary }]}>{displayName} 👋</Text>
-          </View>
-          <View style={styles.headerRight}>
-            <TouchableOpacity
-              style={[styles.iconBtn, { backgroundColor: t.background.surface, borderColor: t.border.default }]}
-              onPress={() => dispatch(toggleTheme())}>
-              <Text style={{ fontSize: 16 }}>{themeMode === 'dark' ? '☀️' : '🌙'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.avatarBtn, { backgroundColor: t.primary.default + '22', borderColor: t.primary.default }]}
-              onPress={() => navigate('profile')}>
-              <Text style={[styles.avatarText, { color: t.primary.accent }]}>{avatarLetters}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+      {/* Bottom nav — only on main tabs */}
+      {MAIN_TABS.has(page) && (
+        <BottomNavBar
+          activeTab={page}
+          onTabPress={key => navigate(key as Page)}
+          t={t}
+        />
+      )}
 
-        {/* ── Brain Status Banner ─────────────────────────────────────────── */}
-        <View style={[styles.banner, { backgroundColor: t.primary.default + '15', borderColor: t.primary.default + '40' }]}>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.bannerTitle, { color: t.primary.accent }]}>🧠 Cognitive OS  Active</Text>
-            <Text style={[styles.bannerSub, { color: t.text.secondary }]}>
-              AI-powered knowledge base — ask, learn &amp; remember
-            </Text>
-          </View>
-          <View style={[styles.statusDot, { backgroundColor: t.status.success }]} />
-        </View>
-
-        {/* ── User info strip ─────────────────────────────────────────────── */}
-        <View style={[styles.infoStrip, { backgroundColor: t.background.surface, borderColor: t.border.default }]}>
-          <View style={styles.infoItem}>
-            <Text style={[styles.infoValue, { color: t.primary.accent }]}>{user?.plan ?? 'Free'}</Text>
-            <Text style={[styles.infoLabel, { color: t.text.muted }]}>Plan</Text>
-          </View>
-          <View style={[styles.infoDivider, { backgroundColor: t.border.subtle }]} />
-          <View style={styles.infoItem}>
-            <Text style={[styles.infoValue, { color: user?.emailVerified ? t.status.success : t.status.error }]}>
-              {user?.emailVerified ? 'Verified' : 'Pending'}
-            </Text>
-            <Text style={[styles.infoLabel, { color: t.text.muted }]}>Email</Text>
-          </View>
-          <View style={[styles.infoDivider, { backgroundColor: t.border.subtle }]} />
-          <View style={styles.infoItem}>
-            <Text style={[styles.infoValue, { color: t.text.primary }]} numberOfLines={1}>
-              {user?.email?.split('@')[0] ?? '—'}
-            </Text>
-            <Text style={[styles.infoLabel, { color: t.text.muted }]}>Username</Text>
-          </View>
-        </View>
-
-        {/* ── Features ──────────────────────────────────────────────────── */}
-        <Text style={[styles.sectionTitle, { color: t.text.primary }]}>Features</Text>
-        <View style={styles.grid}>
-          <NavCard
-            icon="🧠"
-            title="Ask Brain"
-            description="Query the Cognitive OS with any question across your workspaces"
-            accentColor="#8b5cf6"
-            onPress={() => navigate('brainAsk')}
-            t={t}
-          />
-          <NavCard
-            icon="👤"
-            title="Profile"
-            description="View your account info, analytics, settings &amp; cognitive profile"
-            accentColor="#06b6d4"
-            onPress={() => navigate('profile')}
-            t={t}
-          />
-          <NavCard
-            icon="📋"
-            title="Brain Result"
-            description="Fetch the full output of any request using its ID"
-            accentColor="#f59e0b"
-            onPress={() => navigate('brainResult')}
-            t={t}
-          />
-          <NavCard
-            icon="🌐"
-            title="Translate"
-            description="Translate any text into Hindi, Hinglish, Tamil and more"
-            accentColor="#a78bfa"
-            onPress={() => navigate('translate')}
-            t={t}
-          />
-          <NavCard
-            icon="👁️"
-            title="Vision"
-            description="Analyse images with AI — get detailed explanations instantly"
-            accentColor="#10b981"
-            onPress={() => navigate('vision')}
-            t={t}
-          />
-          <NavCard
-            icon="✶"
-            title="Brain Dreams"
-            description="Explore your cognitive dream journal — subconscious insights and actions"
-            accentColor="#7c3aed"
-            onPress={() => navigate('dreams')}
-            t={t}
-          />
-          <NavCard
-            icon="🕸️"
-            title="Neural Graph"
-            description="Visualise semantic connections between your memories and files"
-            accentColor="#ec4899"
-            onPress={() => navigate('neural')}
-            t={t}
-          />
-          <NavCard
-            icon="📁"
-            title="My Files"
-            description="Upload and manage files — images, PDFs, code and more"
-            accentColor="#0ea5e9"
-            onPress={() => navigate('files')}
-            t={t}
-          />
-        </View>
-
-        {/* ── Log Out ─────────────────────────────────────────────────────── */}
-        <TouchableOpacity
-          style={[styles.logoutBtn, { borderColor: t.status.error }]}
-          onPress={handleLogout}
-          activeOpacity={0.8}>
-          <Text style={{ fontSize: 17, marginRight: 8 }}>🔴</Text>
-          <Text style={[styles.logoutText, { color: t.status.error }]}>Log Out</Text>
-        </TouchableOpacity>
-
-        <View style={{ height: 32 }} />
-      </ScrollView>
-
-      {/* AI Agent FAB — bottom-right floating button, visible only on home */}
-      <TouchableOpacity
-        style={[styles.agentFab, { backgroundColor: t.primary.default, shadowColor: t.primary.shadow }]}
-        onPress={() => navigate('agent')}
-        activeOpacity={0.88}>
-        <Svg width={22} height={22} viewBox="0 0 24 24">
-          {/* Bot body */}
-          <Rect x="3" y="8" width="18" height="12" rx="3"
-            stroke="#fff" fill="none" strokeWidth={2}
-            strokeLinecap="round" strokeLinejoin="round" />
-          {/* Eyes */}
-          <Circle cx="9" cy="14" r="1.5" fill="#fff" />
-          <Circle cx="15" cy="14" r="1.5" fill="#fff" />
-          {/* Antenna */}
-          <Path d="M12 8V5" stroke="#fff" fill="none" strokeWidth={2} strokeLinecap="round" />
-          <Circle cx="12" cy="4" r="1" fill="#fff" />
-          {/* Mouth */}
-          <Path d="M9.5 17.5h5" stroke="#fff" fill="none" strokeWidth={2} strokeLinecap="round" />
-        </Svg>
-      </TouchableOpacity>
-    </SafeAreaView>
+      {/* Sidebar drawer */}
+      <Sidebar
+        visible={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        onNavigate={key => navigate(key as Page)}
+        onToggleTheme={() => dispatch(toggleTheme())}
+        onLogout={handleLogout}
+        activeKey={page}
+        t={t}
+        isDark={isDark}
+        displayName={displayName}
+        email={userEmail}
+        avatarLetters={avatarLetters}
+        plan={userPlan}
+      />
+    </View>
   );
 }
 
+// ─── Styles ─────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
+  root: { flex: 1 },
   safe: { flex: 1 },
+  pageContent: { flex: 1 },
   scroll: { paddingHorizontal: 16, paddingTop: 14 },
 
   // Header
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  greeting: { fontSize: 13, marginBottom: 2 },
-  username: { fontSize: 22, fontWeight: '700' },
-  headerRight: { flexDirection: 'row', gap: 10, alignItems: 'center' },
-  iconBtn: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  menuBtn: { width: 40, height: 40, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  greeting: { fontSize: 12, marginBottom: 1, letterSpacing: 0.3 },
+  username: { fontSize: 20, fontWeight: '800' },
+  themeBtn: { width: 38, height: 38, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
   avatarBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', borderWidth: 2 },
   avatarText: { fontSize: 14, fontWeight: '700' },
 
   // Banner
-  banner: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 14 },
+  banner: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, borderWidth: 1, padding: 14, marginBottom: 14 },
+  bannerIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   bannerTitle: { fontSize: 15, fontWeight: '700', marginBottom: 3 },
   bannerSub: { fontSize: 12, lineHeight: 18 },
-  statusDot: { width: 10, height: 10, borderRadius: 5, marginLeft: 12 },
+  statusDot: { width: 10, height: 10, borderRadius: 5, marginLeft: 8 },
 
   // Info strip
-  infoStrip: { flexDirection: 'row', borderRadius: 14, borderWidth: 1, paddingVertical: 14, paddingHorizontal: 10, marginBottom: 24 },
-  infoItem: { flex: 1, alignItems: 'center' },
-  infoValue: { fontSize: 14, fontWeight: '700', marginBottom: 3 },
-  infoLabel: { fontSize: 11, letterSpacing: 0.3 },
+  infoStrip: { flexDirection: 'row', borderRadius: 14, borderWidth: 1, paddingVertical: 14, paddingHorizontal: 10, marginBottom: 20 },
+  infoItem: { flex: 1, alignItems: 'center', gap: 4 },
+  infoValue: { fontSize: 13, fontWeight: '700' },
+  infoLabel: { fontSize: 10, letterSpacing: 0.3 },
   infoDivider: { width: 1, marginVertical: 4 },
 
+  // Quick actions
+  quickRow: { marginBottom: 20 },
+  quickChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 1, marginRight: 10 },
+  quickLabel: { fontSize: 12, fontWeight: '700' },
+
   // Section
-  sectionTitle: { fontSize: 17, fontWeight: '700', marginBottom: 14 },
+  sectionTitle: { fontSize: 16, fontWeight: '800', marginBottom: 12, letterSpacing: 0.1 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-
-  // Logout
-  logoutBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderRadius: 16, paddingVertical: 14, marginTop: 6 },
-  logoutText: { fontSize: 15, fontWeight: '700' },
-
-  // AI Agent FAB
-  agentFab: {
-    position: 'absolute',
-    bottom: 100,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 10,
-  },
 });
 
 export default HomeScreen;

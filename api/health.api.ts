@@ -15,7 +15,10 @@ import type { HealthResponse } from '../types/api.types';
 import { BASE_URL, normaliseAxiosError } from './httpClient';
 
 const HEALTH_URL = `${BASE_URL}/health`;
-const HEALTH_TIMEOUT_MS = 30_000; // generous: server may be cold-starting
+// Render free tier can take 90-120 s to cold-start after inactivity.
+// One 120-second attempt is more effective than repeated 30-second pokes
+// because the server needs sustained time to boot.
+const HEALTH_TIMEOUT_MS = 120_000;
 
 /**
  * Tests server availability.

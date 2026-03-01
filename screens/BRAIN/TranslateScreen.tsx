@@ -131,20 +131,33 @@ export default function TranslateScreen({ onBack }: TranslateScreenProps) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<BrainTranslateResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [history, setHistory] = useState<TranslateHistoryItem[]>([]);
+  const [showHistory, setShowHistory] = useState(true);
+
+  const loadHistory = useCallback(async () => {
+    const items = await getTranslateHistory();
+    setHistory(items);
+  }, []);
+
+  useEffect(() => { loadHistory(); }, [loadHistory]);
 
   const handleTranslate = async () => {
     const text = sourceText.trim();
     if (!text) { setErrorMsg('Please enter some text to translate.'); return; }
-    console.log('🌐 [TranslateScreen] handleTranslate →', { textLen: text.length, targetLanguage });
     setLoading(true);
     setResult(null);
     setErrorMsg('');
     try {
       const res = await translateBrain({ text, targetLanguage });
-      console.log('✅ [TranslateScreen] handleTranslate ← success', { targetLanguage: res.targetLanguage });
       setResult(res);
+      await addTranslateResult({
+        sourceText: text,
+        translation: res.translation,
+        targetLanguage: res.targetLanguage,
+        translatedAt: new Date().toISOString(),
+      });
+      loadHistory();
     } catch (err: any) {
-      console.error('❌ [TranslateScreen] handleTranslate ← error', err);
       setErrorMsg(err?.message ?? 'Translation failed. Please try again.');
     } finally {
       setLoading(false);
@@ -155,7 +168,36 @@ export default function TranslateScreen({ onBack }: TranslateScreenProps) {
     setSourceText('');
     setResult(null);
     setErrorMsg('');
-    console.log('🧹 [TranslateScreen] cleared');
+  };
+
+  const handleClearHistory = () => {
+    Alert.alert(
+      'Clear History',
+      'Remove all visible translation history? (All results remain in permanent archive.)',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: async () => {
+            await clearTranslateHistory();
+            setHistory([]);
+          },
+        },
+      ],
+    );
+  };
+
+  const handleRestoreFromHistory = (item: TranslateHistoryItem) => {
+    setSourceText(item.sourceText);
+    setTargetLanguage(item.targetLanguage);
+    setResult({
+      status: 'done',
+      translation: item.translation,
+      sourceText: item.sourceText,
+      targetLanguage: item.targetLanguage,
+    });
+    setErrorMsg('');
   };
 
   return (
@@ -170,6 +212,36 @@ export default function TranslateScreen({ onBack }: TranslateScreenProps) {
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
+
+        {/* ══ PAST RESULTS ══ */}
+        {history.length > 0 && (
+          <>
+            <View style={styles.histHeader}>
+              <TouchableOpacity
+                onPress={() => setShowHistory(v => !v)}
+                style={styles.histTitleRow}
+                activeOpacity={0.8}>
+                <Text style={[styles.histTitle, { color: t.text.primary }]}>Past Results</Text>
+                <View style={[styles.histCountBadge, { backgroundColor: t.primary.default + '20' }]}>
+                  <Text style={[styles.histCount, { color: t.primary.accent }]}>{history.length}</Text>
+                </View>
+                <Text style={[styles.histToggle, { color: t.text.muted }]}>{showHistory ? '▲' : '▼'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleClearHistory} activeOpacity={0.7}>
+                <Text style={[styles.clearHistBtn, { color: t.status.error }]}>Clear</Text>
+              </TouchableOpacity>
+            </View>
+
+            {showHistory && history.map(item => (
+              <HistoryCard
+                key={item.id}
+                item={item}
+                onPress={() => handleRestoreFromHistory(item)}
+                t={t}
+              />
+            ))}
+          </>
+        )}
 
         {/* ── Source Text ── */}
         <SectionLabel text="Text to Translate" t={t} />
@@ -186,7 +258,7 @@ export default function TranslateScreen({ onBack }: TranslateScreenProps) {
           />
           {sourceText.length > 0 && (
             <TouchableOpacity style={styles.clearBtn} onPress={handleClear}>
-              <Text style={[styles.clearBtnText, { color: t.text.muted }]}>✕ Clear</Text>
+              <Text style={[styles.clearBtnText, { color: t.text.muted }]}>Clear</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -236,7 +308,7 @@ export default function TranslateScreen({ onBack }: TranslateScreenProps) {
           {loading ? (
             <ActivityIndicator color={t.text.onPrimary} />
           ) : (
-            <Text style={[styles.actionBtnText, { color: t.text.onPrimary }]}>🌐  Translate</Text>
+            <Text style={[styles.actionBtnText, { color: t.text.onPrimary }]}>Translate</Text>
           )}
         </TouchableOpacity>
 
@@ -269,7 +341,7 @@ export default function TranslateScreen({ onBack }: TranslateScreenProps) {
             <View style={[styles.resultCard, { backgroundColor: t.background.surface, borderColor: t.primary.default + '50' }]}>
               <View style={styles.resultCardHeader}>
                 <View style={[styles.langTag, { backgroundColor: t.primary.default + '18', borderColor: t.primary.default + '50' }]}>
-                  <Text style={[styles.langTagText, { color: t.primary.accent }]}>🌐 {result.targetLanguage}</Text>
+                  <Text style={[styles.langTagText, { color: t.primary.accent }]}>{result.targetLanguage}</Text>
                 </View>
                 <TouchableOpacity
                   style={[styles.copyBtn, { borderColor: t.border.default, backgroundColor: t.background.screen }]}
@@ -281,9 +353,7 @@ export default function TranslateScreen({ onBack }: TranslateScreenProps) {
                   <Text style={[styles.copyBtnText, { color: t.text.muted }]}>Copy</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={[styles.translationText, { color: t.text.primary }]} selectable>
-                {result.translation}
-              </Text>
+              <MarkdownText content={result.translation} t={t} fontSize={15} lineHeight={26} />
             </View>
 
             {/* ── Translate Again ── */}
@@ -306,6 +376,15 @@ export default function TranslateScreen({ onBack }: TranslateScreenProps) {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { paddingHorizontal: 16, paddingBottom: 32 },
+
+  // Past results header
+  histHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, marginBottom: 10 },
+  histTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  histTitle: { fontSize: 16, fontWeight: '700' },
+  histCountBadge: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
+  histCount: { fontSize: 12, fontWeight: '700' },
+  histToggle: { fontSize: 12 },
+  clearHistBtn: { fontSize: 13, fontWeight: '600' },
 
   // Text area
   textAreaWrap: { borderWidth: 1, borderRadius: 16, padding: 14 },
@@ -338,7 +417,6 @@ const styles = StyleSheet.create({
   resultCard: { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 4 },
   resultCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   resultText: { fontSize: 14, lineHeight: 22 },
-  translationText: { fontSize: 16, lineHeight: 26 },
   langTag: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
   langTagText: { fontSize: 12, fontWeight: '700' },
   copyBtn: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 5 },

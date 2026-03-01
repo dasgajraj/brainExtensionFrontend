@@ -25,8 +25,10 @@ function extractMessage(error: unknown, fallback: string): string {
 // Returns the restored RefreshResult or null (indicating no active session).
 // ─────────────────────────────────────────────────────────────────────────────
 
-const MAX_HEALTH_RETRIES = 3;
-const HEALTH_RETRY_DELAY_MS = 3_000;
+// One long attempt (120 s) is preferable for Render cold-starts.
+// Keep one retry in case of a transient network hiccup.
+const MAX_HEALTH_RETRIES = 2;
+const HEALTH_RETRY_DELAY_MS = 5_000;
 
 async function retryHealthCheck(attempt = 0): Promise<void> {
   try {

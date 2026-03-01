@@ -1,6 +1,7 @@
 import axios from 'axios';
-import httpClient, { normaliseAxiosError, BASE_URL } from './httpClient';
+import { normaliseAxiosError, BASE_URL } from './httpClient';
 import { BRAIN_PIN } from '@env';
+import { tokenService } from '../services/token.service';
 import type {
   SignUpRequest,
   SignUpResponse,
@@ -19,10 +20,16 @@ import type {
   ResetPasswordResponse,
 } from '../types/auth.types';
 
+// Plain axios (not httpClient) — avoids async request-interceptor POST-body
+// corruption on React Native New Architecture (Bridgeless/Hermes).
 export async function apiSignUp(payload: SignUpRequest): Promise<SignUpResponse> {
   console.log('📝 [auth.api] apiSignUp → POST /auth/signup', { name: payload.name, email: payload.email });
   try {
-    const response = await httpClient.post<SignUpResponse>('/auth/signup', payload);
+    const response = await axios.post<SignUpResponse>(
+      `${BASE_URL}/auth/signup`,
+      payload,
+      { headers: { 'Content-Type': 'application/json', Accept: 'application/json' } },
+    );
     console.log('✅ [auth.api] apiSignUp ← success', { userId: response.data.user?._id, email: response.data.user?.email });
     return response.data;
   } catch (error) {
@@ -31,10 +38,15 @@ export async function apiSignUp(payload: SignUpRequest): Promise<SignUpResponse>
   }
 }
 
+// Plain axios (not httpClient) — same reason as apiSignUp above.
 export async function apiLogin(payload: LoginRequest): Promise<LoginResponse> {
   console.log('🔐 [auth.api] apiLogin → POST /auth/login', { email: payload.email });
   try {
-    const response = await httpClient.post<LoginResponse>('/auth/login', payload);
+    const response = await axios.post<LoginResponse>(
+      `${BASE_URL}/auth/login`,
+      payload,
+      { headers: { 'Content-Type': 'application/json', Accept: 'application/json' } },
+    );
     console.log('✅ [auth.api] apiLogin ← success', { userId: response.data.user?._id, email: response.data.user?.email });
     return response.data;
   } catch (error) {
@@ -60,10 +72,22 @@ export async function apiRefresh(payload: RefreshRequest): Promise<RefreshRespon
   }
 }
 
+// Plain axios with manual token — avoids async-interceptor POST-body bug on New Architecture.
 export async function apiLogout(payload: LogoutRequest): Promise<LogoutResponse> {
   console.log('🚪 [auth.api] apiLogout → POST /auth/logout');
   try {
-    const response = await httpClient.post<LogoutResponse>('/auth/logout', payload);
+    const accessToken = await tokenService.getAccessToken();
+    const response = await axios.post<LogoutResponse>(
+      `${BASE_URL}/auth/logout`,
+      payload,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+      },
+    );
     console.log('✅ [auth.api] apiLogout ← success', response.data);
     return response.data;
   } catch (error) {
@@ -87,9 +111,17 @@ export async function apiVerifyRequest(
 ): Promise<VerifyApiResponse> {
   console.log('📨 [auth.api] apiVerifyRequest → POST /auth/verify/request', { email: payload.email });
   try {
-    const response = await httpClient.post<VerifyApiResponse>(
-      '/auth/verify/request',
+    const accessToken = await tokenService.getAccessToken();
+    const response = await axios.post<VerifyApiResponse>(
+      `${BASE_URL}/auth/verify/request`,
       payload,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+      },
     );
     console.log('✅ [auth.api] apiVerifyRequest ← success — OTP sent to email');
     return response.data;
@@ -109,9 +141,17 @@ export async function apiVerifyConfirm(
 ): Promise<VerifyApiResponse> {
   console.log('🔢 [auth.api] apiVerifyConfirm → POST /auth/verify/confirm', { token: payload.token ? `${String(payload.token).slice(0, 3)}***` : undefined });
   try {
-    const response = await httpClient.post<VerifyApiResponse>(
-      '/auth/verify/confirm',
+    const accessToken = await tokenService.getAccessToken();
+    const response = await axios.post<VerifyApiResponse>(
+      `${BASE_URL}/auth/verify/confirm`,
       payload,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+      },
     );
     console.log('✅ [auth.api] apiVerifyConfirm ← success — email verified');
     return response.data;

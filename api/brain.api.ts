@@ -90,6 +90,20 @@ export interface BrainVisionResponse {
   explanation: string;
 }
 
+export interface DreamEntry {
+  id: string;
+  date: string;
+  title: string;
+  insight: string;
+  action: string;
+}
+
+export interface DreamsResponse {
+  status: string;
+  count: number;
+  journal: DreamEntry[];
+}
+
 // ─── API Functions ────────────────────────────────────────────────────────────
 
 /**
@@ -173,10 +187,29 @@ export async function translateBrain(payload: BrainTranslateRequest): Promise<Br
 }
 
 /**
- * POST /brain/vision
- * Analyses an image (base64 data URI) and returns a detailed explanation.
- * Uses plain axios (not httpClient) to avoid async-interceptor POST-body issues.
+ * GET /brain/dreams
+ * Fetches the user's brain dream journal.
+ * Uses plain axios to avoid async-interceptor issues on New Architecture.
  */
+export async function getDreams(): Promise<DreamsResponse> {
+  try {
+    const accessToken = await tokenService.getAccessToken();
+    const { data } = await axios.get<DreamsResponse>(
+      `${BASE_URL}/brain/dreams`,
+      {
+        headers: {
+          'x-brain-pin': BRAIN_PIN,
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        timeout: 30_000,
+      },
+    );
+    return data;
+  } catch (error) {
+    throw normaliseAxiosError(error);
+  }
+}
+
 export async function analyzeVision(payload: BrainVisionRequest): Promise<BrainVisionResponse> {
   console.log('👁️ [brain.api] analyzeVision → POST /brain/vision', { workspaceId: payload.workspaceId, imageLen: payload.image.length });
   try {

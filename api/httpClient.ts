@@ -9,7 +9,7 @@ import { tokenService } from '../services/token.service';
 
 export const BASE_URL = 'https://brain-extension-exng.onrender.com';
 const REFRESH_ENDPOINT = '/auth/refresh';
-const REQUEST_TIMEOUT_MS = 15_000;
+const REQUEST_TIMEOUT_MS = 30_000;
 
 export const httpClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,

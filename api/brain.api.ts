@@ -104,13 +104,6 @@ export interface DreamsResponse {
   journal: DreamEntry[];
 }
 
-export interface GraphRequest {
-  query: string;
-  targetLanguage: string;
-  mode: string;       // e.g. 'study' | 'explore' | 'general'
-  workspaceId: string;
-}
-
 export interface GraphNode {
   id: string;
   label: string;
@@ -273,19 +266,16 @@ export async function analyzeVision(payload: BrainVisionRequest): Promise<BrainV
 }
 
 /**
- * GET /brain/graph  — semantic memory graph for a query
- * Note: Axios sends body as { data } for GET requests.
+ * GET /brain/graph  — semantic memory graph (no parameters)
  */
-export async function getGraph(payload: GraphRequest): Promise<GraphResponse> {
-  console.log('🕸️ [brain.api] getGraph → GET /brain/graph', payload);
+export async function getGraph(): Promise<GraphResponse> {
+  console.log('🕸️ [brain.api] getGraph → GET /brain/graph');
   try {
     const accessToken = await tokenService.getAccessToken();
     const { data } = await axios.get<GraphResponse>(
       `${BASE_URL}/brain/graph`,
       {
-        data: payload,          // Axios forwards as request body for GET
         headers: {
-          'Content-Type': 'application/json',
           'x-brain-pin': BRAIN_PIN,
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },

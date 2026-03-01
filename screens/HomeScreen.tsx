@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,9 @@ import {
   StatusBar,
   Alert,
   Dimensions,
+  BackHandler,
 } from 'react-native';
+import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../redux/RootReducer';
@@ -24,8 +26,9 @@ import VisionScreen from './BRAIN/VisionScreen';
 import DreamsScreen from './BRAIN/DreamsScreen';
 import NeuralGraphScreen from './BRAIN/NeuralGraphScreen';
 import FilesScreen from './Files/FilesScreen';
+import AgentScreen from './BRAIN/AgentScreen';
 
-type Page = 'home' | 'profile' | 'brainAsk' | 'brainResult' | 'translate' | 'vision' | 'dreams' | 'neural' | 'files';
+type Page = 'home' | 'profile' | 'brainAsk' | 'brainResult' | 'translate' | 'vision' | 'dreams' | 'neural' | 'files' | 'agent';
 
 const { width } = Dimensions.get('window');
 const CARD_W = (width - 48) / 2;
@@ -99,6 +102,18 @@ function HomeScreen() {
   const [page, setPage] = useState<Page>('home');
   const displayName = user?.name ?? user?.email?.split('@')[0] ?? 'Explorer';
 
+  // Intercept Android hardware back — navigate home instead of closing the app
+  useEffect(() => {
+    const handler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (page !== 'home') {
+        setPage('home');
+        return true; // handled — prevent app exit
+      }
+      return false; // let the OS handle it (exit from home)
+    });
+    return () => handler.remove();
+  }, [page]);
+
   const avatarLetters = displayName
     .trim()
     .split(/\s+/)
@@ -133,6 +148,7 @@ function HomeScreen() {
   if (page === 'dreams') return <DreamsScreen onBack={() => navigate('home')} />;
   if (page === 'neural') return <NeuralGraphScreen onBack={() => navigate('home')} />;
   if (page === 'files') return <FilesScreen onBack={() => navigate('home')} />;
+  if (page === 'agent') return <AgentScreen onBack={() => navigate('home')} />;
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: t.background.screen }]}>
@@ -278,6 +294,27 @@ function HomeScreen() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* AI Agent FAB — bottom-right floating button, visible only on home */}
+      <TouchableOpacity
+        style={[styles.agentFab, { backgroundColor: t.primary.default, shadowColor: t.primary.shadow }]}
+        onPress={() => navigate('agent')}
+        activeOpacity={0.88}>
+        <Svg width={22} height={22} viewBox="0 0 24 24">
+          {/* Bot body */}
+          <Rect x="3" y="8" width="18" height="12" rx="3"
+            stroke="#fff" fill="none" strokeWidth={2}
+            strokeLinecap="round" strokeLinejoin="round" />
+          {/* Eyes */}
+          <Circle cx="9" cy="14" r="1.5" fill="#fff" />
+          <Circle cx="15" cy="14" r="1.5" fill="#fff" />
+          {/* Antenna */}
+          <Path d="M12 8V5" stroke="#fff" fill="none" strokeWidth={2} strokeLinecap="round" />
+          <Circle cx="12" cy="4" r="1" fill="#fff" />
+          {/* Mouth */}
+          <Path d="M9.5 17.5h5" stroke="#fff" fill="none" strokeWidth={2} strokeLinecap="round" />
+        </Svg>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -315,6 +352,22 @@ const styles = StyleSheet.create({
   // Logout
   logoutBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderRadius: 16, paddingVertical: 14, marginTop: 6 },
   logoutText: { fontSize: 15, fontWeight: '700' },
+
+  // AI Agent FAB
+  agentFab: {
+    position: 'absolute',
+    bottom: 100,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 10,
+  },
 });
 
 export default HomeScreen;

@@ -1,9 +1,11 @@
 /**
  * components/ui/BottomNavBar.tsx
  *
- * Persistent bottom navigation bar with animated active indicator.
- * 5 tabs: Home, Brain, Files, Agent, Profile.
- * Uses RN Animated for smooth spring-based tab transitions.
+ * Material 3 NavigationBar — 5 tabs.
+ * Tabs: Home · Brain · Agent (elevated FAB center) · Files · Profile
+ *
+ * Active indicator: pill-shaped background behind icon (Material 3 style).
+ * No dot below label. Agent tab is a circular elevated FAB.
  */
 
 import React, { useEffect, useRef } from 'react';
@@ -13,33 +15,25 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
-  Dimensions,
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppTokens } from '../../theme/tokens';
-import {
-  IconHome,
-  IconBrain,
-  IconFolder,
-  IconBot,
-  IconUser,
-} from './Icons';
-
-const { width: SCREEN_W } = Dimensions.get('window');
+import { IconHome, IconBrain, IconFolder, IconBot, IconUser } from './Icons';
 
 interface Tab {
   key: string;
   label: string;
   icon: React.ComponentType<{ size?: number; color: string }>;
+  isCenter?: boolean;
 }
 
 const TABS: Tab[] = [
-  { key: 'home', label: 'Home', icon: IconHome },
-  { key: 'brainAsk', label: 'Brain', icon: IconBrain },
-  { key: 'files', label: 'Files', icon: IconFolder },
-  { key: 'agent', label: 'Agent', icon: IconBot },
-  { key: 'profile', label: 'Profile', icon: IconUser },
+  { key: 'home',     label: 'Home',    icon: IconHome   },
+  { key: 'brainAsk', label: 'Brain',   icon: IconBrain  },
+  { key: 'agent',    label: 'Agent',   icon: IconBot,   isCenter: true },
+  { key: 'files',    label: 'Files',   icon: IconFolder },
+  { key: 'profile',  label: 'Profile', icon: IconUser   },
 ];
 
 interface BottomNavBarProps {
@@ -50,39 +44,28 @@ interface BottomNavBarProps {
 
 export default function BottomNavBar({ activeTab, onTabPress, t }: BottomNavBarProps) {
   const insets = useSafeAreaInsets();
-  const TAB_W = SCREEN_W / TABS.length;
-  const activeIndex = TABS.findIndex(tab => tab.key === activeTab);
-
-  const indicatorAnim = useRef(new Animated.Value(activeIndex >= 0 ? activeIndex * TAB_W : 0)).current;
   const scaleAnims = useRef(TABS.map(() => new Animated.Value(1))).current;
+  const pillWidths  = useRef(TABS.map((tab) => new Animated.Value(tab.key === activeTab ? 1 : 0))).current;
+
+  const isDark = t.text.primary === '#FFFFFF';
+  const ACTIVE_BG   = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)';
+  const ACTIVE_COL  = t.text.primary;
+  const INACTIVE_COL = t.text.muted;
 
   useEffect(() => {
-    if (activeIndex >= 0) {
-      Animated.spring(indicatorAnim, {
-        toValue: activeIndex * TAB_W,
-        useNativeDriver: true,
-        damping: 18,
-        stiffness: 200,
-        mass: 0.6,
+    TABS.forEach((tab, idx) => {
+      Animated.spring(pillWidths[idx], {
+        toValue: tab.key === activeTab ? 1 : 0,
+        useNativeDriver: false,
+        damping: 20, stiffness: 260, mass: 0.7,
       }).start();
-    }
-  }, [activeIndex, indicatorAnim, TAB_W]);
+    });
+  }, [activeTab]);
 
   const handlePress = (key: string, index: number) => {
-    // Bounce animation
     Animated.sequence([
-      Animated.spring(scaleAnims[index], {
-        toValue: 0.85,
-        useNativeDriver: true,
-        damping: 15,
-        stiffness: 400,
-      }),
-      Animated.spring(scaleAnims[index], {
-        toValue: 1,
-        useNativeDriver: true,
-        damping: 10,
-        stiffness: 300,
-      }),
+      Animated.spring(scaleAnims[index], { toValue: 0.82, useNativeDriver: true, damping: 15, stiffness: 400 }),
+      Animated.spring(scaleAnims[index], { toValue: 1,    useNativeDriver: true, damping: 10, stiffness: 300 }),
     ]).start();
     onTabPress(key);
   };
@@ -94,53 +77,55 @@ export default function BottomNavBar({ activeTab, onTabPress, t }: BottomNavBarP
         {
           backgroundColor: t.background.screen,
           borderTopColor: t.border.subtle,
-          paddingBottom: Math.max(insets.bottom, 6),
+          paddingBottom: Math.max(insets.bottom, 8),
         },
       ]}>
-      {/* Animated indicator line */}
-      <Animated.View
-        style={[
-          s.indicator,
-          {
-            width: TAB_W * 0.4,
-            backgroundColor: t.primary.default,
-            transform: [{ translateX: Animated.add(indicatorAnim, TAB_W * 0.3) }],
-          },
-        ]}
-      />
-
       {TABS.map((tab, index) => {
         const active = tab.key === activeTab;
-        const Icon = tab.icon;
+        const Icon   = tab.icon;
+
+        /* ── Elevated center FAB (Agent) ── */
+        if (tab.isCenter) {
+          const fabBg        = active ? (isDark ? '#FFFFFF' : '#000000') : (isDark ? '#1C1C1C' : '#EBEBEB');
+          const fabIconColor = active ? (isDark ? '#000000' : '#FFFFFF') : INACTIVE_COL;
+          return (
+            <View key={tab.key} style={s.centerWrap}>
+              <Animated.View style={{ transform: [{ scale: scaleAnims[index] }] }}>
+                <TouchableOpacity
+                  style={[s.fab, { backgroundColor: fabBg, borderColor: t.border.default }]}
+                  onPress={() => handlePress(tab.key, index)}
+                  activeOpacity={0.75}>
+                  <Icon size={22} color={fabIconColor} />
+                </TouchableOpacity>
+              </Animated.View>
+              <Text style={[s.label, { color: active ? ACTIVE_COL : INACTIVE_COL, fontWeight: active ? '700' : '400' }]}>
+                {tab.label}
+              </Text>
+            </View>
+          );
+        }
+
+        /* ── Regular tab with Material 3 pill indicator ── */
+        const pillW = pillWidths[index].interpolate({ inputRange: [0, 1], outputRange: [0, 64] });
+
         return (
           <TouchableOpacity
             key={tab.key}
             style={s.tab}
             onPress={() => handlePress(tab.key, index)}
             activeOpacity={0.7}>
-            <Animated.View
-              style={[
-                s.tabInner,
-                { transform: [{ scale: scaleAnims[index] }] },
-              ]}>
-              <View
-                style={[
-                  s.iconContainer,
-                  active && { backgroundColor: t.primary.default + '14' },
-                ]}>
-                <Icon
-                  size={20}
-                  color={active ? t.primary.default : t.text.muted}
+            <Animated.View style={[s.tabInner, { transform: [{ scale: scaleAnims[index] }] }]}>
+              {/* Icon + pill indicator */}
+              <View style={s.iconWrap}>
+                <Animated.View
+                  style={[
+                    s.pill,
+                    { width: pillW, backgroundColor: ACTIVE_BG, opacity: pillWidths[index] },
+                  ]}
                 />
+                <Icon size={20} color={active ? ACTIVE_COL : INACTIVE_COL} />
               </View>
-              <Text
-                style={[
-                  s.label,
-                  {
-                    color: active ? t.primary.default : t.text.muted,
-                    fontWeight: active ? '700' : '500',
-                  },
-                ]}>
+              <Text style={[s.label, { color: active ? ACTIVE_COL : INACTIVE_COL, fontWeight: active ? '700' : '400' }]}>
                 {tab.label}
               </Text>
             </Animated.View>
@@ -154,48 +139,33 @@ export default function BottomNavBar({ activeTab, onTabPress, t }: BottomNavBarP
 const s = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    borderTopWidth: 1,
-    paddingTop: 6,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 8,
+    alignItems: 'flex-start',
     ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 12,
-      },
+      ios:     { shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.07, shadowRadius: 10 },
+      android: { elevation: 14 },
     }),
   },
-  indicator: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    height: 3,
-    borderBottomLeftRadius: 3,
-    borderBottomRightRadius: 3,
-  },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 4,
-  },
-  tabInner: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconContainer: {
-    width: 40,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 2,
-  },
-  label: {
-    fontSize: 10,
-    letterSpacing: 0.2,
+  /* Regular tabs */
+  tab:      { flex: 1, alignItems: 'center', paddingVertical: 2 },
+  tabInner: { alignItems: 'center' },
+  iconWrap: { width: 64, height: 32, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  /* Material 3 pill */
+  pill: { position: 'absolute', height: 32, borderRadius: 16 },
+  label: { fontSize: 10, letterSpacing: 0.2 },
+  /* Center FAB */
+  centerWrap: { flex: 1, alignItems: 'center', paddingTop: 2 },
+  fab: {
+    width: 52, height: 52, borderRadius: 26,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1,
+    marginTop: -20,
+    marginBottom: 4,
+    ...Platform.select({
+      ios:     { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 10 },
+      android: { elevation: 8 },
+    }),
   },
 });
+

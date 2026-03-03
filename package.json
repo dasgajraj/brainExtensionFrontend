@@ -6,7 +6,7 @@
     "android": "react-native run-android",
     "ios": "react-native run-ios",
     "lint": "eslint .",
-    "start": "react-native start",
+    "start": "react-native start --reset-cache",
     "test": "jest",
     "postinstall": "patch-package"
   },
@@ -19,6 +19,7 @@
     "axios": "^1.13.5",
     "react": "19.2.0",
     "react-native": "0.83.1",
+    "react-native-biometrics": "^3.0.1",
     "react-native-document-picker": "^9.3.1",
     "react-native-image-picker": "^8.2.1",
     "react-native-linear-gradient": "^2.8.3",

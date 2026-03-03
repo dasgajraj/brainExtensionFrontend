@@ -1,23 +1,114 @@
 import React, { useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Dimensions,
-  StatusBar,
-} from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Dimensions } from 'react-native';
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-  withRepeat,
-  withSequence,
-  interpolate,
-  Easing,
+  useSharedValue, useAnimatedStyle, withSpring, withTiming, withRepeat, withSequence,
 } from 'react-native-reanimated';
+
+const { height } = Dimensions.get('window');
+
+interface Onboarding1Props {
+  onNext: () => void;
+  onSkip: () => void;
+  theme?: 'light' | 'dark';
+}
+
+const Onboarding1: React.FC<Onboarding1Props> = ({ onNext, onSkip, theme = 'dark' }) => {
+  const isDark = theme === 'dark';
+  const bg = isDark ? '#000000' : '#FFFFFF';
+  const fg = isDark ? '#FFFFFF' : '#000000';
+  const muted = isDark ? '#555555' : '#AAAAAA';
+  const accent = isDark ? '#FFFFFF' : '#000000';
+
+  const opacity = useSharedValue(0);
+  const scale   = useSharedValue(0.88);
+  const textY   = useSharedValue(30);
+  const pulse   = useSharedValue(1);
+
+  useEffect(() => {
+    opacity.value = withTiming(1, { duration: 500 });
+    scale.value   = withSpring(1, { damping: 16, stiffness: 120 });
+    textY.value   = withSpring(0, { damping: 18, stiffness: 140 });
+    pulse.value   = withRepeat(withSequence(
+      withTiming(1.12, { duration: 1400 }),
+      withTiming(1,    { duration: 1400 }),
+    ), -1, false);
+  }, []);
+
+  const rootStyle  = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  const circleStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
+  const contentStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: textY.value }],
+  }));
+
+  return (
+    <Animated.View style={[s.root, { backgroundColor: bg }, rootStyle]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={bg} />
+
+      {/* Graphic */}
+      <View style={s.graphic}>
+        <Animated.View style={[s.outerRing, { borderColor: muted }, circleStyle]}>
+          <View style={[s.innerRing, { borderColor: fg }]}>
+            <View style={[s.dot, { backgroundColor: fg }]} />
+          </View>
+        </Animated.View>
+      </View>
+
+      {/* Content */}
+      <Animated.View style={[s.content, contentStyle]}>
+        <Text style={[s.tag, { color: muted }]}>INTELLIGENT ASSISTANT</Text>
+        <Text style={[s.title, { color: fg }]}>Your Brain,{'\n'}<Text style={{ color: muted }}>Extended</Text></Text>
+        <Text style={[s.subtitle, { color: muted }]}>
+          Capture ideas instantly and let AI transform them into organised, actionable knowledge.
+        </Text>
+      </Animated.View>
+
+      {/* Footer */}
+      <View style={s.footer}>
+        <TouchableOpacity onPress={onSkip} style={s.skip} activeOpacity={0.6}>
+          <Text style={[s.skipText, { color: muted }]}>Skip</Text>
+        </TouchableOpacity>
+        <View style={s.pagination}>
+          <View style={[s.dot2, s.dotActive, { backgroundColor: accent }]} />
+          <View style={[s.dot2, { backgroundColor: muted }]} />
+          <View style={[s.dot2, { backgroundColor: muted }]} />
+        </View>
+        <TouchableOpacity
+          style={[s.nextBtn, { backgroundColor: accent }]}
+          onPress={onNext}
+          activeOpacity={0.75}>
+          <Text style={[s.nextText, { color: isDark ? '#000' : '#FFF' }]}>Next</Text>
+        </TouchableOpacity>
+      </View>
+    </Animated.View>
+  );
+};
+
+const s = StyleSheet.create({
+  root: { flex: 1 },
+  graphic: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  outerRing: { width: 160, height: 160, borderRadius: 80, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  innerRing: { width: 96, height: 96, borderRadius: 48, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  dot: { width: 24, height: 24, borderRadius: 12 },
+  content: { paddingHorizontal: 36, paddingBottom: 120 },
+  tag: { fontSize: 11, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16 },
+  title: { fontSize: 46, fontWeight: '900', lineHeight: 52, marginBottom: 18 },
+  subtitle: { fontSize: 16, lineHeight: 25 },
+  footer: {
+    position: 'absolute', bottom: 44, left: 32, right: 32,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+  },
+  skip: { paddingVertical: 10 },
+  skipText: { fontSize: 15, fontWeight: '600' },
+  pagination: { flexDirection: 'row', gap: 6 },
+  dot2: { width: 8, height: 8, borderRadius: 4 },
+  dotActive: { width: 28 },
+  nextBtn: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
+  nextText: { fontSize: 14, fontWeight: '700' },
+});
+
+export default Onboarding1;
+
 
 const { height } = Dimensions.get('window');
 const ANIMATION_DURATION = 600;

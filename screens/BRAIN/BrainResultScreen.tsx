@@ -138,7 +138,7 @@ function StatusBadge({ status, t }: { status: string; t: T }) {
   const bg = isDone ? t.status.successSubtle : isPending ? t.primary.default + '1A' : t.status.errorSubtle;
   const border = isDone ? t.status.success : isPending ? t.primary.default : t.status.error;
   const textColor = isDone ? t.status.success : isPending ? t.primary.accent : t.status.error;
-  const icon = isDone ? '✓' : isPending ? '⏳' : '✗';
+  const icon = isDone ? 'DONE' : isPending ? 'WAIT' : 'FAIL';
   return (
     <View style={[badge.wrap, { backgroundColor: bg, borderColor: border }]}>
       <Text style={[badge.text, { color: textColor }]}>{icon}  {status.toUpperCase()}</Text>
@@ -209,7 +209,7 @@ function HistoryRow({
         <View style={histStyles.metaRow}>
           {/* Lobe badge */}
           <View style={[histStyles.lobeBadge, { backgroundColor: t.primary.default + '1A' }]}>
-            <Text style={[histStyles.lobeBadgeText, { color: t.primary.accent }]}>🧠 {item.selectedLobe}</Text>
+            <Text style={[histStyles.lobeBadgeText, { color: t.primary.accent }]}>{item.selectedLobe}</Text>
           </View>
           {/* Mode badge */}
           <View style={[histStyles.modeBadge, { backgroundColor: (modeColor[item.mode] ?? t.text.muted) + '22' }]}>
@@ -275,6 +275,7 @@ export default function BrainResultScreen({ onBack, prefillId }: BrainResultScre
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<BrainRequest | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [showAllHistory, setShowAllHistory] = useState(false);
 
   // ── History state ───────────────────────────────────────────────────────
   const [history, setHistory] = useState<BrainHistoryItem[]>([]);
@@ -426,29 +427,7 @@ export default function BrainResultScreen({ onBack, prefillId }: BrainResultScre
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
 
-        {/* ══ HISTORY ══ */}
-        {history.length > 0 && (
-          <>
-            <View style={styles.histSectionHeader}>
-              <Text style={[styles.histSectionTitle, { color: t.text.primary }]}>Saved Questions</Text>
-              <TouchableOpacity onPress={handleClearAllHistory} activeOpacity={0.7}>
-                <Text style={[styles.histClearAll, { color: t.status.error }]}>Clear All</Text>
-              </TouchableOpacity>
-            </View>
-            {history.map(item => (
-              <HistoryRow
-                key={item.requestId}
-                item={item}
-                isActive={requestId === item.requestId}
-                onPress={() => handleSelectHistory(item)}
-                onDelete={() => handleDeleteHistoryItem(item.requestId)}
-                t={t}
-              />
-            ))}
-          </>
-        )}
-
-        {/* ── Compact Search Bar ── */}
+        {/* ── Compact Search Bar (TOP) ── */}
         <View style={[styles.searchBar, { backgroundColor: t.background.input, borderColor: t.border.default }]}>
           <Text style={[styles.hashIcon, { color: t.text.muted }]}>#</Text>
           <TextInput
@@ -478,14 +457,43 @@ export default function BrainResultScreen({ onBack, prefillId }: BrainResultScre
         {/* ── Error ── */}
         {errorMsg !== '' && (
           <View style={[styles.errorBox, { backgroundColor: t.status.errorSubtle, borderColor: t.status.error }]}>
-            <Text style={[styles.errorText, { color: t.status.error }]}>⚠  {errorMsg}</Text>
+            <Text style={[styles.errorText, { color: t.status.error }]}>{errorMsg}</Text>
+          </View>
+        )}
+
+        {/* ── History section (max 2 by default, show more toggle) ── */}
+        {history.length > 0 && (
+          <View style={{ marginBottom: 8 }}>
+            <View style={[styles.histSectionHeader]}>
+              <Text style={[styles.histSectionTitle, { color: t.text.primary }]}>Recent Questions</Text>
+              {history.length > 2 && (
+                <TouchableOpacity onPress={() => setShowAllHistory(p => !p)} activeOpacity={0.7}>
+                  <Text style={[styles.histClearAll, { color: t.primary.accent }]}>
+                    {showAllHistory ? 'Show less' : `+${history.length - 2} more`}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={handleClearAllHistory} activeOpacity={0.7} style={{ marginLeft: 12 }}>
+                <Text style={[styles.histClearAll, { color: t.status.error }]}>Clear all</Text>
+              </TouchableOpacity>
+            </View>
+            {(showAllHistory ? history : history.slice(0, 2)).map(item => (
+              <HistoryRow
+                key={item.requestId}
+                item={item}
+                isActive={item.requestId === requestId}
+                onPress={() => handleSelectHistory(item)}
+                onDelete={() => handleDeleteHistoryItem(item.requestId)}
+                t={t}
+              />
+            ))}
           </View>
         )}
 
         {/* ── Empty state ── */}
         {!result && !loading && history.length === 0 && errorMsg === '' && (
           <View style={styles.emptyState}>
-            <Text style={[styles.emptyIcon]}>🧠</Text>
+            <Text style={[styles.emptyIcon, { color: t.text.muted }]}>[ ]</Text>
             <Text style={[styles.emptyTitle, { color: t.text.primary }]}>No result yet</Text>
             <Text style={[styles.emptyHint, { color: t.text.muted }]}>
               Paste a Request ID above, or go to Brain Ask to send a new question.
@@ -502,7 +510,7 @@ export default function BrainResultScreen({ onBack, prefillId }: BrainResultScre
               <StatusBadge status={result.status} t={t} />
               {duration && (
                 <View style={[styles.durationBadge, { backgroundColor: t.background.surface, borderColor: t.border.default }]}>
-                  <Text style={[styles.durationIcon]}>⚡</Text>
+                  <Text style={[styles.durationIcon, { color: t.text.muted }]}>+</Text>
                   <Text style={[styles.durationText, { color: t.text.secondary }]}>{duration}</Text>
                 </View>
               )}
@@ -588,7 +596,7 @@ export default function BrainResultScreen({ onBack, prefillId }: BrainResultScre
                   <View style={styles.outputCardHeader}>
                     <View style={[styles.lobeBadge, { backgroundColor: t.primary.default + '1A', borderColor: t.primary.default + '50' }]}>
                       <Text style={[styles.lobeBadgeText, { color: t.primary.accent }]}>
-                        🧠 {result.selectedLobe} lobe
+                        {result.selectedLobe} lobe
                       </Text>
                     </View>
                     <TouchableOpacity

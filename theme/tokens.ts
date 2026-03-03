@@ -117,34 +117,34 @@ export interface AppTokens {
 
 const darkTokens: AppTokens = {
   background: {
-    screen: '#0a0a0f',                         // HomeScreen, App.tsx StatusBar
-    surface: 'rgba(139, 92, 246, 0.12)',       // Onboarding1 mainCircle fill
+    screen: '#000000',                         // Pure black minimalistic
+    surface: '#111111',                        // Near-black surface
     input: 'rgba(255, 255, 255, 0.06)',
-    subtle: 'rgba(167, 139, 250, 0.2)',        // Onboarding1 badge bg
-    gradient: ['#0a0517', '#1a0f2e', '#2d1854'], // Onboarding1 LinearGradient
+    subtle: 'rgba(255, 255, 255, 0.08)',       // Subtle grey tint
+    gradient: ['#000000', '#0a0a0a', '#111111'], // Minimal dark gradient
   },
   text: {
-    primary: '#ffffff',                        // HomeScreen darkText
-    secondary: 'rgba(255, 255, 255, 0.75)',    // Onboarding1 subtitle
-    muted: 'rgba(255, 255, 255, 0.5)',         // Onboarding1 skipText
-    onPrimary: '#ffffff',
-    placeholder: 'rgba(255, 255, 255, 0.35)',
+    primary: '#FFFFFF',                        // Pure white
+    secondary: 'rgba(255, 255, 255, 0.70)',    // Soft white
+    muted: 'rgba(255, 255, 255, 0.40)',        // Muted grey
+    onPrimary: '#000000',                      // Black text on white buttons
+    placeholder: 'rgba(255, 255, 255, 0.25)',
   },
   primary: {
-    default: '#8b5cf6',                        // Onboarding1 nextButton, Onboarding2 btn
-    accent: '#c4b5fd',                         // Onboarding1 titleAccent, centerGlyph
-    shadow: '#8b5cf6',                         // Onboarding1 mainCircle shadowColor
-    focusBorder: '#c4b5fd',
+    default: '#FFFFFF',                        // White as primary accent
+    accent: '#E0E0E0',                         // Light grey accent
+    shadow: 'rgba(255, 255, 255, 0.15)',
+    focusBorder: '#FFFFFF',
   },
   status: {
     error: '#f87171',
-    errorSubtle: 'rgba(248, 113, 113, 0.15)',
+    errorSubtle: 'rgba(248, 113, 113, 0.12)',
     success: '#4ade80',
-    successSubtle: 'rgba(74, 222, 128, 0.15)',
+    successSubtle: 'rgba(74, 222, 128, 0.10)',
   },
   border: {
-    default: 'rgba(196, 181, 253, 0.25)',      // Onboarding1 mainCircle borderColor
-    subtle: 'rgba(255, 255, 255, 0.08)',
+    default: 'rgba(255, 255, 255, 0.12)',
+    subtle: 'rgba(255, 255, 255, 0.06)',
   },
   spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48 },
   typography: {
@@ -162,34 +162,34 @@ const darkTokens: AppTokens = {
 
 const lightTokens: AppTokens = {
   background: {
-    screen: '#ffffff',                         // HomeScreen lightBg, App.tsx StatusBar
-    surface: 'rgba(124, 58, 237, 0.08)',
+    screen: '#FFFFFF',                         // Pure white
+    surface: '#F5F5F5',                        // Light grey surface
     input: 'rgba(0, 0, 0, 0.04)',
-    subtle: 'rgba(124, 58, 237, 0.1)',         // Onboarding1 badge bg (light)
-    gradient: ['#faf5ff', '#f3e8ff', '#e9d5ff'], // Onboarding1 LinearGradient (light)
+    subtle: 'rgba(0, 0, 0, 0.05)',             // Subtle tint
+    gradient: ['#FFFFFF', '#FAFAFA', '#F5F5F5'], // Minimal light gradient
   },
   text: {
-    primary: '#1e1b4b',                        // Onboarding1 title light
-    secondary: 'rgba(30, 27, 75, 0.75)',       // Onboarding1 subtitle light
-    muted: 'rgba(30, 27, 75, 0.5)',            // Onboarding1 skipText light
-    onPrimary: '#ffffff',
-    placeholder: 'rgba(30, 27, 75, 0.35)',
+    primary: '#000000',                        // Pure black
+    secondary: 'rgba(0, 0, 0, 0.65)',          // Soft black
+    muted: 'rgba(0, 0, 0, 0.40)',              // Muted grey
+    onPrimary: '#FFFFFF',                      // White text on black buttons
+    placeholder: 'rgba(0, 0, 0, 0.25)',
   },
   primary: {
-    default: '#7c3aed',                        // Onboarding1 nextButton (light)
-    accent: '#7c3aed',                         // Onboarding1 centerGlyph (light)
-    shadow: 'rgba(124, 58, 237, 0.35)',
-    focusBorder: '#7c3aed',
+    default: '#000000',                        // Black as primary accent
+    accent: '#333333',                         // Dark grey accent
+    shadow: 'rgba(0, 0, 0, 0.15)',
+    focusBorder: '#000000',
   },
   status: {
     error: '#dc2626',
-    errorSubtle: 'rgba(220, 38, 38, 0.1)',
+    errorSubtle: 'rgba(220, 38, 38, 0.08)',
     success: '#16a34a',
-    successSubtle: 'rgba(22, 163, 74, 0.1)',
+    successSubtle: 'rgba(22, 163, 74, 0.08)',
   },
   border: {
-    default: 'rgba(124, 58, 237, 0.25)',
-    subtle: 'rgba(0, 0, 0, 0.08)',
+    default: 'rgba(0, 0, 0, 0.10)',
+    subtle: 'rgba(0, 0, 0, 0.05)',
   },
   spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48 },
   typography: {

@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  FlatList,
   TouchableOpacity,
   StatusBar,
   Alert,
@@ -18,6 +19,9 @@ import { AppDispatch } from '../redux/Store';
 import { toggleTheme } from '../redux/Action';
 import { logoutThunk } from '../redux/authSlice';
 import { getTokens, AppTokens } from '../theme/tokens';
+import { getDreams, DreamEntry } from '../api/brain.api';
+import { getSeenDreamIds, markDreamAsSeen } from '../services/dreamSeen.service';
+import { authenticateWithBiometrics } from '../services/biometric.service';
 
 // ── Screens
 import ProfileScreen from './ProfileScreen';
@@ -85,14 +89,12 @@ interface FeatureCardData {
 
 const FEATURE_CARDS: FeatureCardData[] = [
   { key: 'brainAsk', icon: IconBrain, title: 'Ask Brain', description: 'Query the Cognitive OS with any question across your workspaces', accentColor: '#8b5cf6' },
-  { key: 'profile', icon: IconUser, title: 'Profile', description: 'View your account info, analytics, settings & cognitive profile', accentColor: '#06b6d4' },
   { key: 'brainResult', icon: IconClipboard, title: 'Brain Result', description: 'Fetch the full output of any request using its ID', accentColor: '#f59e0b' },
   { key: 'translate', icon: IconGlobe, title: 'Translate', description: 'Translate any text into Hindi, Hinglish, Tamil and more', accentColor: '#a78bfa' },
   { key: 'vision', icon: IconEye, title: 'Vision', description: 'Analyse images with AI — get detailed explanations instantly', accentColor: '#10b981' },
   { key: 'dreams', icon: IconStar, title: 'Brain Dreams', description: 'Explore your cognitive dream journal — subconscious insights', accentColor: '#7c3aed' },
   { key: 'neural', icon: IconNetwork, title: 'Neural Graph', description: 'Visualise semantic connections between your memories and files', accentColor: '#ec4899' },
   { key: 'files', icon: IconFolder, title: 'My Files', description: 'Upload and manage files — images, PDFs, code and more', accentColor: '#0ea5e9' },
-  { key: 'agent', icon: IconBot, title: 'AI Agent', description: 'Remotely control your desktop Chrome via AI agent commands', accentColor: '#06b6d4' },
 ];
 
 // ─── Feature Card ───────────────────────────────────────────────────────────
@@ -163,6 +165,11 @@ function HomeScreen() {
   const [page, setPage] = useState<Page>('home');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Dreams stories state
+  const [dreams, setDreams] = useState<DreamEntry[]>([]);
+  const [seenIds, setSeenIds] = useState<Set<string>>(new Set());
+  const [dreamStartIndex, setDreamStartIndex] = useState(0);
+
   const displayName = user?.name ?? user?.email?.split('@')[0] ?? 'Explorer';
   const userEmail = user?.email ?? '';
   const userPlan = user?.plan ?? 'Free';
@@ -223,13 +230,38 @@ function HomeScreen() {
       },
     ]);
 
+  // ── Load dreams + seen tracking ─────────────────────────────────────────
+  const loadDreams = useCallback(async () => {
+    try {
+      const res = await getDreams();
+      const seen = await getSeenDreamIds();
+      setSeenIds(seen);
+      const unseen = res.journal.filter(d => !seen.has(d.id)).reverse();
+      const seenList = res.journal.filter(d => seen.has(d.id));
+      setDreams([...unseen, ...seenList]);
+    } catch {
+      // silent — dreams are optional
+    }
+  }, []);
+
+  useEffect(() => { loadDreams(); }, [loadDreams]);
+
+  // ── Biometric-aware tab press ─────────────────────────────────────────
+  const handleTabPress = useCallback(async (key: string) => {
+    if (key === 'agent') {
+      const authed = await authenticateWithBiometrics();
+      if (!authed) return;
+    }
+    navigate(key as Page);
+  }, [navigate]);
+
   // ── Overlay pages — full-screen, managed by the sub-screen's own header
   if (OVERLAY_PAGES.has(page)) {
     const overlayMap: Record<string, React.ReactNode> = {
       brainResult: <BrainResultScreen onBack={() => navigate('home')} />,
       translate: <TranslateScreen onBack={() => navigate('home')} />,
       vision: <VisionScreen onBack={() => navigate('home')} />,
-      dreams: <DreamsScreen onBack={() => navigate('home')} />,
+      dreams: <DreamsScreen onBack={() => { navigate('home'); loadDreams(); }} startIndex={dreamStartIndex} />,
       neural: <NeuralGraphScreen onBack={() => navigate('home')} />,
     };
     return <>{overlayMap[page]}</>;
@@ -283,44 +315,56 @@ function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* ── Status Banner ──────────────────────────────────────────────── */}
-      <View style={[styles.banner, { backgroundColor: t.primary.default + '12', borderColor: t.primary.default + '35' }]}>
-        <View style={[styles.bannerIconWrap, { backgroundColor: t.primary.default + '20' }]}>
-          <IconBrain size={22} color={t.primary.accent} />
+      {/* ── Dreams Stories ─────────────────────────────────────────────── */}
+      {dreams.length > 0 && (
+        <View style={{ marginBottom: 20 }}>
+          <View style={styles.storiesHeader}>
+            <Text style={[styles.sectionTitle, { color: t.text.primary, marginBottom: 0 }]}>Brain Dreams</Text>
+            {dreams.length > 5 && (
+              <TouchableOpacity onPress={() => { setDreamStartIndex(0); navigate('dreams'); }} activeOpacity={0.7}>
+                <Text style={[styles.seeAll, { color: t.primary.accent }]}>See all →</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          <FlatList
+            data={dreams.slice(0, 5)}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={d => d.id}
+            contentContainerStyle={{ gap: 10, paddingVertical: 8 }}
+            renderItem={({ item, index }) => {
+              const isSeen = seenIds.has(item.id);
+              const STORY_COLORS = ['#6d28d9','#1d4ed8','#065f46','#92400e','#be185d'];
+              const accent = STORY_COLORS[index % STORY_COLORS.length];
+              return (
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={async () => {
+                    await markDreamAsSeen(item.id);
+                    setSeenIds(prev => new Set([...prev, item.id]));
+                    setDreamStartIndex(index);
+                    navigate('dreams');
+                  }}
+                  style={[
+                    styles.storyCard,
+                    { borderColor: isSeen ? (isDark ? '#333' : '#CCC') : accent, borderWidth: isSeen ? 1 : 2.5 },
+                  ]}>
+                  <View style={[styles.storyInner, { backgroundColor: isSeen ? (isDark ? '#111' : '#E8E8E8') : accent + 'CC' }]}>
+                    <Text style={[styles.storyTitle, { color: isSeen ? (isDark ? '#555' : '#AAA') : '#FFF' }]} numberOfLines={3}>
+                      {item.title}
+                    </Text>
+                    {!isSeen && (
+                      <View style={[styles.storyBadge, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
+                        <Text style={styles.storyBadgeText}>NEW</Text>
+                      </View>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              );
+            }}
+          />
         </View>
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={[styles.bannerTitle, { color: t.primary.accent }]}>Cognitive OS Active</Text>
-          <Text style={[styles.bannerSub, { color: t.text.secondary }]}>
-            AI-powered knowledge base — ask, learn & remember
-          </Text>
-        </View>
-        <View style={[styles.statusDot, { backgroundColor: t.status.success }]} />
-      </View>
-
-      {/* ── Info Strip ─────────────────────────────────────────────────── */}
-      <View style={[styles.infoStrip, { backgroundColor: t.background.surface, borderColor: t.border.default }]}>
-        <View style={styles.infoItem}>
-          <IconZap size={14} color={t.primary.accent} />
-          <Text style={[styles.infoValue, { color: t.primary.accent }]}>{userPlan}</Text>
-          <Text style={[styles.infoLabel, { color: t.text.muted }]}>Plan</Text>
-        </View>
-        <View style={[styles.infoDivider, { backgroundColor: t.border.subtle }]} />
-        <View style={styles.infoItem}>
-          <IconActivity size={14} color={user?.emailVerified ? t.status.success : t.status.error} />
-          <Text style={[styles.infoValue, { color: user?.emailVerified ? t.status.success : t.status.error }]}>
-            {user?.emailVerified ? 'Verified' : 'Pending'}
-          </Text>
-          <Text style={[styles.infoLabel, { color: t.text.muted }]}>Email</Text>
-        </View>
-        <View style={[styles.infoDivider, { backgroundColor: t.border.subtle }]} />
-        <View style={styles.infoItem}>
-          <IconUser size={14} color={t.text.primary} />
-          <Text style={[styles.infoValue, { color: t.text.primary }]} numberOfLines={1}>
-            {user?.email?.split('@')[0] ?? '—'}
-          </Text>
-          <Text style={[styles.infoLabel, { color: t.text.muted }]}>Username</Text>
-        </View>
-      </View>
+      )}
 
       {/* ── Quick Actions ──────────────────────────────────────────────── */}
       <Text style={[styles.sectionTitle, { color: t.text.primary }]}>Quick Actions</Text>
@@ -383,7 +427,7 @@ function HomeScreen() {
       {MAIN_TABS.has(page) && (
         <BottomNavBar
           activeTab={page}
-          onTabPress={key => navigate(key as Page)}
+          onTabPress={handleTabPress}
           t={t}
         />
       )}
@@ -445,6 +489,15 @@ const styles = StyleSheet.create({
   // Section
   sectionTitle: { fontSize: 16, fontWeight: '800', marginBottom: 12, letterSpacing: 0.1 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+
+  // Dreams stories
+  storiesHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  seeAll: { fontSize: 13, fontWeight: '600' },
+  storyCard: { width: 80, height: 128, borderRadius: 14, overflow: 'hidden' },
+  storyInner: { flex: 1, padding: 8, justifyContent: 'flex-end' },
+  storyTitle: { fontSize: 10, fontWeight: '700', lineHeight: 14 },
+  storyBadge: { alignSelf: 'flex-start', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2, marginTop: 4 },
+  storyBadgeText: { fontSize: 8, fontWeight: '800', color: '#FFF', letterSpacing: 0.5 },
 });
 
 export default HomeScreen;

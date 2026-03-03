@@ -322,9 +322,9 @@ const ldSt = StyleSheet.create({
 });
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
-interface DreamsScreenProps { onBack: () => void; }
+interface DreamsScreenProps { onBack: () => void; startIndex?: number; }
 
-export default function DreamsScreen({ onBack }: DreamsScreenProps) {
+export default function DreamsScreen({ onBack, startIndex = 0 }: DreamsScreenProps) {
   const themeMode = useSelector((s: RootState) => s.theme.mode);
   const isDark = themeMode === 'dark';
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -333,7 +333,7 @@ export default function DreamsScreen({ onBack }: DreamsScreenProps) {
   const [stage, setStage] = useState<'loading' | 'story' | 'error'>('loading');
   const [dreams, setDreams] = useState<DreamEntry[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [muted, setMuted] = useState(false);
   const [sharing, setSharing] = useState(false);
 

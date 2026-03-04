@@ -2,113 +2,9 @@ import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Dimensions } from 'react-native';
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withTiming, withRepeat, withSequence,
+  Easing, interpolate,
 } from 'react-native-reanimated';
-
-const { height } = Dimensions.get('window');
-
-interface Onboarding1Props {
-  onNext: () => void;
-  onSkip: () => void;
-  theme?: 'light' | 'dark';
-}
-
-const Onboarding1: React.FC<Onboarding1Props> = ({ onNext, onSkip, theme = 'dark' }) => {
-  const isDark = theme === 'dark';
-  const bg = isDark ? '#000000' : '#FFFFFF';
-  const fg = isDark ? '#FFFFFF' : '#000000';
-  const muted = isDark ? '#555555' : '#AAAAAA';
-  const accent = isDark ? '#FFFFFF' : '#000000';
-
-  const opacity = useSharedValue(0);
-  const scale   = useSharedValue(0.88);
-  const textY   = useSharedValue(30);
-  const pulse   = useSharedValue(1);
-
-  useEffect(() => {
-    opacity.value = withTiming(1, { duration: 500 });
-    scale.value   = withSpring(1, { damping: 16, stiffness: 120 });
-    textY.value   = withSpring(0, { damping: 18, stiffness: 140 });
-    pulse.value   = withRepeat(withSequence(
-      withTiming(1.12, { duration: 1400 }),
-      withTiming(1,    { duration: 1400 }),
-    ), -1, false);
-  }, []);
-
-  const rootStyle  = useAnimatedStyle(() => ({ opacity: opacity.value }));
-  const circleStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
-  const contentStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: textY.value }],
-  }));
-
-  return (
-    <Animated.View style={[s.root, { backgroundColor: bg }, rootStyle]}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={bg} />
-
-      {/* Graphic */}
-      <View style={s.graphic}>
-        <Animated.View style={[s.outerRing, { borderColor: muted }, circleStyle]}>
-          <View style={[s.innerRing, { borderColor: fg }]}>
-            <View style={[s.dot, { backgroundColor: fg }]} />
-          </View>
-        </Animated.View>
-      </View>
-
-      {/* Content */}
-      <Animated.View style={[s.content, contentStyle]}>
-        <Text style={[s.tag, { color: muted }]}>INTELLIGENT ASSISTANT</Text>
-        <Text style={[s.title, { color: fg }]}>Your Brain,{'\n'}<Text style={{ color: muted }}>Extended</Text></Text>
-        <Text style={[s.subtitle, { color: muted }]}>
-          Capture ideas instantly and let AI transform them into organised, actionable knowledge.
-        </Text>
-      </Animated.View>
-
-      {/* Footer */}
-      <View style={s.footer}>
-        <TouchableOpacity onPress={onSkip} style={s.skip} activeOpacity={0.6}>
-          <Text style={[s.skipText, { color: muted }]}>Skip</Text>
-        </TouchableOpacity>
-        <View style={s.pagination}>
-          <View style={[s.dot2, s.dotActive, { backgroundColor: accent }]} />
-          <View style={[s.dot2, { backgroundColor: muted }]} />
-          <View style={[s.dot2, { backgroundColor: muted }]} />
-        </View>
-        <TouchableOpacity
-          style={[s.nextBtn, { backgroundColor: accent }]}
-          onPress={onNext}
-          activeOpacity={0.75}>
-          <Text style={[s.nextText, { color: isDark ? '#000' : '#FFF' }]}>Next</Text>
-        </TouchableOpacity>
-      </View>
-    </Animated.View>
-  );
-};
-
-const s = StyleSheet.create({
-  root: { flex: 1 },
-  graphic: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  outerRing: { width: 160, height: 160, borderRadius: 80, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  innerRing: { width: 96, height: 96, borderRadius: 48, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  dot: { width: 24, height: 24, borderRadius: 12 },
-  content: { paddingHorizontal: 36, paddingBottom: 120 },
-  tag: { fontSize: 11, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16 },
-  title: { fontSize: 46, fontWeight: '900', lineHeight: 52, marginBottom: 18 },
-  subtitle: { fontSize: 16, lineHeight: 25 },
-  footer: {
-    position: 'absolute', bottom: 44, left: 32, right: 32,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-  },
-  skip: { paddingVertical: 10 },
-  skipText: { fontSize: 15, fontWeight: '600' },
-  pagination: { flexDirection: 'row', gap: 6 },
-  dot2: { width: 8, height: 8, borderRadius: 4 },
-  dotActive: { width: 28 },
-  nextBtn: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
-  nextText: { fontSize: 14, fontWeight: '700' },
-});
-
-export default Onboarding1;
-
+import LinearGradient from 'react-native-linear-gradient';
 
 const { height } = Dimensions.get('window');
 const ANIMATION_DURATION = 600;
@@ -243,8 +139,8 @@ const Onboarding1: React.FC<Onboarding1Props> = ({ onNext, onSkip, theme = 'dark
   });
 
   const colors = isDark 
-    ? ['#0a0517', '#1a0f2e', '#2d1854'] 
-    : ['#faf5ff', '#f3e8ff', '#e9d5ff'];
+    ? ['#000000', '#0a0a0a', '#111111'] 
+    : ['#FFFFFF', '#FAFAFA', '#F5F5F5'];
 
   return (
     <LinearGradient colors={colors} style={styles.container}>
@@ -255,21 +151,21 @@ const Onboarding1: React.FC<Onboarding1Props> = ({ onNext, onSkip, theme = 'dark
         <Animated.View
           style={[
             styles.blob1,
-            { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.35)' : 'rgba(124, 58, 237, 0.18)' },
+            { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)' },
             blob1Style,
           ]}
         />
         <Animated.View
           style={[
             styles.blob2,
-            { backgroundColor: isDark ? 'rgba(167, 139, 250, 0.28)' : 'rgba(139, 92, 246, 0.14)' },
+            { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)' },
             blob2Style,
           ]}
         />
         <Animated.View
           style={[
             styles.blob3,
-            { backgroundColor: isDark ? 'rgba(196, 181, 253, 0.22)' : 'rgba(167, 139, 250, 0.12)' },
+            { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)' },
             blob3Style,
           ]}
         />
@@ -283,24 +179,24 @@ const Onboarding1: React.FC<Onboarding1Props> = ({ onNext, onSkip, theme = 'dark
             mainAnimatedStyle,
             {
               backgroundColor: isDark
-                ? 'rgba(139, 92, 246, 0.25)'
-                : 'rgba(124, 58, 237, 0.18)',
+                ? 'rgba(255, 255, 255, 0.12)'
+                : 'rgba(0, 0, 0, 0.08)',
               borderColor: isDark
-                ? 'rgba(196, 181, 253, 0.4)'
-                : 'rgba(124, 58, 237, 0.3)',
+                ? 'rgba(255, 255, 255, 0.30)'
+                : 'rgba(0, 0, 0, 0.18)',
             },
           ]}
         >
           <View
             style={[
               styles.centerGlyph,
-              { borderColor: isDark ? '#c4b5fd' : '#7c3aed' },
+              { borderColor: isDark ? '#FFFFFF' : '#000000' },
             ]}
           >
             <View
               style={[
                 styles.centerGlyphDot,
-                { backgroundColor: isDark ? '#c4b5fd' : '#7c3aed' },
+                { backgroundColor: isDark ? '#FFFFFF' : '#000000' },
               ]}
             />
           </View>
@@ -316,8 +212,8 @@ const Onboarding1: React.FC<Onboarding1Props> = ({ onNext, onSkip, theme = 'dark
           }));
 
           const particleColor = isDark
-            ? 'rgba(196, 181, 253, 0.7)'
-            : 'rgba(124, 58, 237, 0.6)';
+            ? 'rgba(255, 255, 255, 0.65)'
+            : 'rgba(0, 0, 0, 0.55)';
 
           return (
             <Animated.View key={index} style={[styles.particle, particleStyle]}>
@@ -330,14 +226,14 @@ const Onboarding1: React.FC<Onboarding1Props> = ({ onNext, onSkip, theme = 'dark
       {/* Content */}
       <Animated.View style={[styles.content, textAnimatedStyle]}>
         <View style={styles.headerContainer}>
-          <View style={[styles.badge, { backgroundColor: isDark ? 'rgba(167, 139, 250, 0.2)' : 'rgba(124, 58, 237, 0.2)' }]}>
-            <Text style={[styles.badgeText, { color: isDark ? '#c4b5fd' : '#7c3aed' }]}>
+          <View style={[styles.badge, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.10)' : 'rgba(0, 0, 0, 0.06)' }]}>
+            <Text style={[styles.badgeText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
               INTELLIGENT ASSISTANT
             </Text>
           </View>
-          <Text style={[styles.title, { color: isDark ? '#fff' : '#1e1b4b' }]}>
+          <Text style={[styles.title, { color: isDark ? '#FFFFFF' : '#000000' }]}>
             Your Brain,{'\n'}
-            <Text style={[styles.titleAccent, { color: isDark ? '#c4b5fd' : '#8b5cf6' }]}>
+            <Text style={[styles.titleAccent, { color: isDark ? '#AAAAAA' : '#444444' }]}>
               Extended
             </Text>
           </Text>
@@ -356,13 +252,13 @@ const Onboarding1: React.FC<Onboarding1Props> = ({ onNext, onSkip, theme = 'dark
         </TouchableOpacity>
         
         <View style={styles.pagination}>
-          <View style={[styles.dot, styles.dotActive, { backgroundColor: isDark ? '#c4b5fd' : '#8b5cf6' }]} />
+          <View style={[styles.dot, styles.dotActive, { backgroundColor: isDark ? '#AAAAAA' : '#444444' }]} />
           <View style={[styles.dot, { backgroundColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(30,27,75,0.2)' }]} />
           <View style={[styles.dot, { backgroundColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(30,27,75,0.2)' }]} />
         </View>
         
         <TouchableOpacity 
-          style={[styles.nextButton, { backgroundColor: isDark ? '#8b5cf6' : '#7c3aed' }]} 
+          style={[styles.nextButton, { backgroundColor: isDark ? '#FFFFFF' : '#000000' }]} 
           onPress={onNext}
           activeOpacity={0.8}
         >
@@ -418,12 +314,12 @@ const styles = StyleSheet.create({
     width: 140,
     height: 140,
     borderRadius: 70,
-    backgroundColor: 'rgba(139, 92, 246, 0.25)',
+    backgroundColor: 'rgba(180, 180, 180, 0.15)',
     borderWidth: 3,
-    borderColor: 'rgba(196, 181, 253, 0.4)',
+    borderColor: 'rgba(180, 180, 180, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#8b5cf6',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.5,
     shadowRadius: 20,
@@ -449,7 +345,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(139, 92, 246, 0.08)',
+    backgroundColor: 'rgba(150, 150, 150, 0.08)',
   },
   particleDot: {
     width: 10,
@@ -528,7 +424,7 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#8b5cf6',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.4,
     shadowRadius: 16,

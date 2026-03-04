@@ -116,10 +116,10 @@ const Onboarding3: React.FC<Onboarding3Props> = ({ onGetStarted, theme = 'dark' 
   }));
 
   const colors = isDark 
-    ? ['#0a0517', '#1a0f2e', '#2d1854'] 
-    : ['#faf5ff', '#f3e8ff', '#e9d5ff'];
+    ? ['#000000', '#0a0a0a', '#111111'] 
+    : ['#FFFFFF', '#FAFAFA', '#F5F5F5'];
   
-  const confettiColors = ['#8b5cf6', '#a78bfa', '#c4b5fd', '#f59e0b', '#10b981'];
+  const confettiColors = ['#333333', '#555555', '#777777', '#999999', '#BBBBBB'];
   const confettiSizes = [6, 8, 10, 12];
 
   return (
@@ -144,7 +144,7 @@ const Onboarding3: React.FC<Onboarding3Props> = ({ onGetStarted, theme = 'dark' 
                   height: ringSize,
                   borderRadius: ringSize / 2,
                   borderWidth: 3,
-                  borderColor: isDark ? '#c4b5fd' : '#8b5cf6',
+                  borderColor: isDark ? '#FFFFFF' : '#000000',
                   marginTop: 60,
                 },
                 ringStyle,
@@ -200,25 +200,25 @@ const Onboarding3: React.FC<Onboarding3Props> = ({ onGetStarted, theme = 'dark' 
       {/* Content */}
       <Animated.View style={[styles.content, textAnimatedStyle]}>
         <View style={styles.headerContainer}>
-          <View style={[styles.badge, { backgroundColor: isDark ? 'rgba(167, 139, 250, 0.2)' : 'rgba(124, 58, 237, 0.2)' }]}>
-            <Text style={[styles.badgeText, { color: isDark ? '#c4b5fd' : '#7c3aed' }]}>
+          <View style={[styles.badge, { backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }]}>
+            <Text style={[styles.badgeText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
               YOU'RE ALL SET
             </Text>
           </View>
-          <Text style={[styles.title, { color: isDark ? '#fff' : '#1e1b4b' }]}>
+          <Text style={[styles.title, { color: isDark ? '#FFFFFF' : '#000000' }]}>
             Ready to{'\n'}
-            <Text style={[styles.titleAccent, { color: isDark ? '#c4b5fd' : '#8b5cf6' }]}>
+            <Text style={[styles.titleAccent, { color: isDark ? '#FFFFFF' : '#000000' }]}>
               Transform
             </Text>
           </Text>
-          <Text style={[styles.subtitle, { color: isDark ? 'rgba(255,255,255,0.75)' : 'rgba(30,27,75,0.75)' }]}>
+          <Text style={[styles.subtitle, { color: isDark ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.70)' }]}>
             Your intelligent workspace awaits. Start capturing and organizing your ideas effortlessly.
           </Text>
         </View>
 
         <Animated.View style={buttonAnimatedStyle}>
           <TouchableOpacity 
-            style={[styles.startButton, { backgroundColor: isDark ? '#8b5cf6' : '#7c3aed' }]}
+            style={[styles.startButton, { backgroundColor: isDark ? '#FFFFFF' : '#000000' }]}
             onPress={onGetStarted}
             activeOpacity={0.85}
           >
@@ -230,9 +230,9 @@ const Onboarding3: React.FC<Onboarding3Props> = ({ onGetStarted, theme = 'dark' 
       {/* Footer pagination */}
       <View style={styles.footer}>
         <View style={styles.pagination}>
-          <View style={[styles.dot, { backgroundColor: isDark ? 'rgba(196, 181, 253, 0.3)' : 'rgba(139, 92, 246, 0.3)' }]} />
-          <View style={[styles.dot, { backgroundColor: isDark ? 'rgba(196, 181, 253, 0.3)' : 'rgba(139, 92, 246, 0.3)' }]} />
-          <View style={[styles.dot, styles.dotActive, { backgroundColor: isDark ? '#c4b5fd' : '#8b5cf6' }]} />
+          <View style={[styles.dot, { backgroundColor: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)' }]} />
+          <View style={[styles.dot, { backgroundColor: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)' }]} />
+          <View style={[styles.dot, styles.dotActive, { backgroundColor: isDark ? '#FFFFFF' : '#000000' }]} />
         </View>
       </View>
     </LinearGradient>
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
     paddingVertical: 22,
     paddingHorizontal: 40,
     borderRadius: 32,
-    shadowColor: '#8b5cf6',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.5,
     shadowRadius: 20,

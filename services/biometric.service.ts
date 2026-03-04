@@ -52,7 +52,7 @@ export async function authenticateWithBiometrics(): Promise<boolean> {
     const promptMessage =
       biometryType === BiometryTypes.FaceID
         ? 'Authenticate with Face ID to access AI Agent'
-        : biometryType === BiometryTypes.Fingerprint
+        : biometryType === BiometryTypes.TouchID
         ? 'Scan your fingerprint to access AI Agent'
         : 'Authenticate to access AI Agent';
 

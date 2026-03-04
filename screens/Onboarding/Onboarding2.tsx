@@ -138,10 +138,10 @@ const Onboarding2: React.FC<Onboarding2Props> = ({ onNext, onSkip, theme = 'dark
   });
 
   const colors = isDark 
-    ? ['#0a0517', '#1a0f2e', '#2d1854'] 
-    : ['#faf5ff', '#f3e8ff', '#e9d5ff'];
+    ? ['#000000', '#0a0a0a', '#111111'] 
+    : ['#FFFFFF', '#FAFAFA', '#F5F5F5'];
   
-  const cardColors = ['#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe', '#ede9fe'];
+  const cardColors = ['#555555', '#777777', '#999999', '#BBBBBB', '#DDDDDD'];
 
   return (
     <LinearGradient colors={colors} style={styles.container}>
@@ -193,7 +193,7 @@ const Onboarding2: React.FC<Onboarding2Props> = ({ onNext, onSkip, theme = 'dark
               style={[
                 styles.card,
                 {
-                  backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)',
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
                   top: 20 + index * 50,
                 },
                 cardStyle,
@@ -208,13 +208,13 @@ const Onboarding2: React.FC<Onboarding2Props> = ({ onNext, onSkip, theme = 'dark
                 <View
                   style={[
                     styles.cardIconDot,
-                    { backgroundColor: isDark ? '#c4b5fd' : '#7c3aed' },
+                    { backgroundColor: isDark ? '#FFFFFF' : '#000000' },
                   ]}
                 />
                 <View
                   style={[
                     styles.cardIconLine,
-                    { backgroundColor: isDark ? '#c4b5fd' : '#7c3aed' },
+                    { backgroundColor: isDark ? '#FFFFFF' : '#000000' },
                   ]}
                 />
               </View>
@@ -230,14 +230,14 @@ const Onboarding2: React.FC<Onboarding2Props> = ({ onNext, onSkip, theme = 'dark
       {/* Content */}
       <Animated.View style={[styles.content, textAnimatedStyle]}>
         <View style={styles.headerContainer}>
-          <View style={[styles.badge, { backgroundColor: isDark ? 'rgba(167, 139, 250, 0.2)' : 'rgba(124, 58, 237, 0.2)' }]}>
-            <Text style={[styles.badgeText, { color: isDark ? '#c4b5fd' : '#7c3aed' }]}>
+          <View style={[styles.badge, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.10)' : 'rgba(0, 0, 0, 0.06)' }]}>
+            <Text style={[styles.badgeText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
               ORGANIZE SMARTLY
             </Text>
           </View>
-          <Text style={[styles.title, { color: isDark ? '#fff' : '#1e1b4b' }]}>
+          <Text style={[styles.title, { color: isDark ? '#FFFFFF' : '#000000' }]}>
             Everything{'\n'}
-            <Text style={[styles.titleAccent, { color: isDark ? '#c4b5fd' : '#8b5cf6' }]}>
+            <Text style={[styles.titleAccent, { color: isDark ? '#AAAAAA' : '#444444' }]}>
               Connected
             </Text>
           </Text>
@@ -257,12 +257,12 @@ const Onboarding2: React.FC<Onboarding2Props> = ({ onNext, onSkip, theme = 'dark
         
         <View style={styles.pagination}>
           <View style={[styles.dot, { backgroundColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(30,27,75,0.2)' }]} />
-          <View style={[styles.dot, styles.dotActive, { backgroundColor: isDark ? '#c4b5fd' : '#8b5cf6' }]} />
+          <View style={[styles.dot, styles.dotActive, { backgroundColor: isDark ? '#AAAAAA' : '#444444' }]} />
           <View style={[styles.dot, { backgroundColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(30,27,75,0.2)' }]} />
         </View>
         
         <TouchableOpacity 
-          style={[styles.nextButton, { backgroundColor: isDark ? '#8b5cf6' : '#7c3aed' }]} 
+          style={[styles.nextButton, { backgroundColor: isDark ? '#FFFFFF' : '#000000' }]} 
           onPress={onNext}
           activeOpacity={0.8}
         >
@@ -288,18 +288,18 @@ const styles = StyleSheet.create({
     left: -width * 0.25,
   },
   wave1: {
-    backgroundColor: '#8b5cf6',
-    opacity: 0.15,
+    backgroundColor: '#888888',
+    opacity: 0.12,
     top: '20%',
   },
   wave2: {
-    backgroundColor: '#a78bfa',
-    opacity: 0.12,
+    backgroundColor: '#AAAAAA',
+    opacity: 0.09,
     top: '30%',
   },
   wave3: {
-    backgroundColor: '#c4b5fd',
-    opacity: 0.1,
+    backgroundColor: '#CCCCCC',
+    opacity: 0.07,
     top: '40%',
   },
   cardsContainer: {
@@ -318,8 +318,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(196, 181, 253, 0.3)',
-    shadowColor: '#8b5cf6',
+    borderColor: 'rgba(150, 150, 150, 0.3)',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 12,
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
     left: '50%',
     width: 2,
     height: 40,
-    backgroundColor: 'rgba(139, 92, 246, 0.4)',
+    backgroundColor: 'rgba(150, 150, 150, 0.4)',
   },
   content: {
     flex: 1,
@@ -435,7 +435,7 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#8b5cf6',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.4,
     shadowRadius: 16,

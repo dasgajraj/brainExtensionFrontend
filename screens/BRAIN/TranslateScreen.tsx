@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Alert,
   Clipboard,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
@@ -55,21 +56,31 @@ function ScreenHeader({ onBack, t }: { onBack: () => void; t: T }) {
   return (
     <View style={[hdrStyles.wrap, { borderBottomColor: t.border.subtle }]}>
       <TouchableOpacity
-        style={[hdrStyles.back, { backgroundColor: t.background.surface, borderColor: t.border.default }]}
+        style={[
+          hdrStyles.back,
+          {
+            backgroundColor: t.background.elevated,
+            ...Platform.select({
+              ios: { shadowColor: t.shadow.card.color, shadowOffset: { width: 0, height: 1 }, shadowOpacity: t.shadow.card.opacity * 0.5, shadowRadius: 3 },
+              android: { elevation: 2 },
+            }),
+          },
+        ]}
         onPress={onBack}
-        activeOpacity={0.8}>
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        activeOpacity={0.75}>
         <Text style={[hdrStyles.backIcon, { color: t.text.primary }]}>←</Text>
       </TouchableOpacity>
       <Text style={[hdrStyles.title, { color: t.text.primary }]}>Translate</Text>
-      <View style={{ width: 38 }} />
+      <View style={{ width: 40 }} />
     </View>
   );
 }
 const hdrStyles = StyleSheet.create({
-  wrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1 },
-  back: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 10, borderWidth: 1 },
+  wrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 14 },
   backIcon: { fontSize: 20, lineHeight: 22 },
-  title: { fontSize: 17, fontWeight: '700' },
+  title: { fontSize: 18, fontWeight: '700', letterSpacing: -0.3 },
 });
 
 function SectionLabel({ text, t }: { text: string; t: T }) {
@@ -104,15 +115,15 @@ function HistoryCard({ item, onPress, t }: { item: TranslateHistoryItem; onPress
   );
 }
 const hcStyles = StyleSheet.create({
-  card: { borderRadius: 14, borderWidth: 1, padding: 14, marginBottom: 8 },
+  card: { borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 16, marginBottom: 10 },
   langRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   autoText: { fontSize: 12, fontWeight: '600' },
   arrow: { fontSize: 14, fontWeight: '700' },
-  langBadge: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2 },
-  langBadgeText: { fontSize: 12, fontWeight: '700' },
-  time: { fontSize: 11, marginLeft: 'auto' },
-  sourcePreview: { fontSize: 12, lineHeight: 17, marginBottom: 4 },
-  translationPreview: { fontSize: 13, lineHeight: 19, fontWeight: '500' },
+  langBadge: { borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 10, paddingVertical: 3 },
+  langBadgeText: { fontSize: 12, fontWeight: '700', letterSpacing: -0.1 },
+  time: { fontSize: 11, marginLeft: 'auto', letterSpacing: 0.2 },
+  sourcePreview: { fontSize: 12, lineHeight: 18, marginBottom: 4 },
+  translationPreview: { fontSize: 13, lineHeight: 20, fontWeight: '500' },
 });
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -377,54 +388,54 @@ export default function TranslateScreen({ onBack }: TranslateScreenProps) {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  scroll: { paddingHorizontal: 16, paddingBottom: 32 },
+  scroll: { paddingHorizontal: 18, paddingBottom: 36 },
 
   // Past results header
-  histHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, marginBottom: 10 },
+  histHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 22, marginBottom: 12 },
   histTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  histTitle: { fontSize: 16, fontWeight: '700' },
+  histTitle: { fontSize: 16, fontWeight: '700', letterSpacing: -0.2 },
   histCountBadge: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
   histCount: { fontSize: 12, fontWeight: '700' },
   histToggle: { fontSize: 12 },
   clearHistBtn: { fontSize: 13, fontWeight: '600' },
 
   // Text area
-  textAreaWrap: { borderWidth: 1, borderRadius: 16, padding: 14 },
-  textArea: { fontSize: 15, lineHeight: 23, minHeight: 120 },
+  textAreaWrap: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, padding: 16 },
+  textArea: { fontSize: 15, lineHeight: 24, minHeight: 120 },
   clearBtn: { alignSelf: 'flex-end', marginTop: 8 },
   clearBtnText: { fontSize: 12, fontWeight: '600' },
-  charCount: { fontSize: 11, textAlign: 'right', marginTop: 6, marginRight: 2 },
+  charCount: { fontSize: 11, textAlign: 'right', marginTop: 7, marginRight: 2, letterSpacing: 0.2 },
 
   // Language chips
-  langRow: { paddingRight: 16, gap: 8, paddingVertical: 4 },
-  langChip: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
-  langChipText: { fontSize: 13, fontWeight: '600' },
+  langRow: { paddingRight: 18, gap: 10, paddingVertical: 4 },
+  langChip: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 9 },
+  langChipText: { fontSize: 13, fontWeight: '600', letterSpacing: -0.1 },
 
   // Error
-  errorBox: { borderRadius: 12, borderWidth: 1, padding: 14, marginTop: 16 },
-  errorText: { fontSize: 13, lineHeight: 19, fontWeight: '500' },
+  errorBox: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, padding: 16, marginTop: 18 },
+  errorText: { fontSize: 13, lineHeight: 20, fontWeight: '500' },
 
   // Action button
-  actionBtn: { borderRadius: 16, paddingVertical: 15, alignItems: 'center', marginTop: 20, justifyContent: 'center', flexDirection: 'row' },
-  actionBtnText: { fontSize: 16, fontWeight: '700' },
+  actionBtn: { borderRadius: 18, paddingVertical: 16, alignItems: 'center', marginTop: 22, justifyContent: 'center', flexDirection: 'row' },
+  actionBtnText: { fontSize: 16, fontWeight: '700', letterSpacing: -0.2 },
 
   // Lang pair row
-  langPairRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 24, marginBottom: 4 },
-  langPairChip: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 8, alignItems: 'center', minWidth: 80 },
-  langPairLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 },
-  langPairValue: { fontSize: 14, fontWeight: '700' },
+  langPairRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 26, marginBottom: 4 },
+  langPairChip: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingHorizontal: 18, paddingVertical: 10, alignItems: 'center', minWidth: 84 },
+  langPairLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 3 },
+  langPairValue: { fontSize: 14, fontWeight: '700', letterSpacing: -0.1 },
   langArrow: { fontSize: 20, fontWeight: '700' },
 
   // Result cards
-  resultCard: { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 4 },
-  resultCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  resultText: { fontSize: 14, lineHeight: 22 },
-  langTag: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
-  langTagText: { fontSize: 12, fontWeight: '700' },
-  copyBtn: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 5 },
+  resultCard: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, padding: 18, marginBottom: 4 },
+  resultCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  resultText: { fontSize: 14, lineHeight: 23 },
+  langTag: { borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 12, paddingVertical: 5 },
+  langTagText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.2 },
+  copyBtn: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 6 },
   copyBtnText: { fontSize: 12, fontWeight: '600' },
 
   // Again button
-  againBtn: { borderWidth: 1, borderRadius: 14, paddingVertical: 13, alignItems: 'center', marginTop: 16 },
+  againBtn: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, paddingVertical: 14, alignItems: 'center', marginTop: 18 },
   againBtnText: { fontSize: 14, fontWeight: '600' },
 });

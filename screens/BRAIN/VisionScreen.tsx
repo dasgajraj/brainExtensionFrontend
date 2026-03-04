@@ -11,6 +11,7 @@ import {
   Alert,
   Clipboard,
   TextInput,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
@@ -49,21 +50,31 @@ function ScreenHeader({ onBack, t }: { onBack: () => void; t: T }) {
   return (
     <View style={[hdrStyles.wrap, { borderBottomColor: t.border.subtle }]}>
       <TouchableOpacity
-        style={[hdrStyles.back, { backgroundColor: t.background.surface, borderColor: t.border.default }]}
+        style={[
+          hdrStyles.back,
+          {
+            backgroundColor: t.background.elevated,
+            ...Platform.select({
+              ios: { shadowColor: t.shadow.card.color, shadowOffset: { width: 0, height: 1 }, shadowOpacity: t.shadow.card.opacity * 0.5, shadowRadius: 3 },
+              android: { elevation: 2 },
+            }),
+          },
+        ]}
         onPress={onBack}
-        activeOpacity={0.8}>
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        activeOpacity={0.75}>
         <Text style={[hdrStyles.backIcon, { color: t.text.primary }]}>←</Text>
       </TouchableOpacity>
       <Text style={[hdrStyles.title, { color: t.text.primary }]}>Brain Vision</Text>
-      <View style={{ width: 38 }} />
+      <View style={{ width: 40 }} />
     </View>
   );
 }
 const hdrStyles = StyleSheet.create({
-  wrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1 },
-  back: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 10, borderWidth: 1 },
+  wrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 14 },
   backIcon: { fontSize: 20, lineHeight: 22 },
-  title: { fontSize: 17, fontWeight: '700' },
+  title: { fontSize: 18, fontWeight: '700', letterSpacing: -0.3 },
 });
 
 function SectionLabel({ text, t }: { text: string; t: T }) {
@@ -93,12 +104,12 @@ function HistoryCard({ item, onPress, t }: { item: VisionHistoryItem; onPress: (
   );
 }
 const hcStyles = StyleSheet.create({
-  card: { borderRadius: 14, borderWidth: 1, padding: 14, marginBottom: 8 },
+  card: { borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 16, marginBottom: 10 },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  wsBadge: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2 },
-  wsText: { fontSize: 12, fontWeight: '700' },
-  time: { fontSize: 11 },
-  preview: { fontSize: 13, lineHeight: 19 },
+  wsBadge: { borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 10, paddingVertical: 3 },
+  wsText: { fontSize: 12, fontWeight: '700', letterSpacing: -0.1 },
+  time: { fontSize: 11, letterSpacing: 0.2 },
+  preview: { fontSize: 13, lineHeight: 20 },
 });
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -417,12 +428,12 @@ export default function VisionScreen({ onBack }: VisionScreenProps) {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  scroll: { paddingHorizontal: 16, paddingBottom: 32 },
+  scroll: { paddingHorizontal: 18, paddingBottom: 36 },
 
   // Past results header
-  histHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, marginBottom: 10 },
+  histHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 22, marginBottom: 12 },
   histTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  histTitle: { fontSize: 16, fontWeight: '700' },
+  histTitle: { fontSize: 16, fontWeight: '700', letterSpacing: -0.2 },
   histCountBadge: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
   histCount: { fontSize: 12, fontWeight: '700' },
   histToggle: { fontSize: 12 },
@@ -430,53 +441,53 @@ const styles = StyleSheet.create({
 
   // Pick buttons
   pickRow: { flexDirection: 'row', gap: 12 },
-  pickBtn: { flex: 1, borderWidth: 1, borderRadius: 16, padding: 18, alignItems: 'center', gap: 6 },
-  pickBtnText: { fontSize: 14, fontWeight: '700' },
+  pickBtn: { flex: 1, borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, padding: 20, alignItems: 'center', gap: 6 },
+  pickBtnText: { fontSize: 14, fontWeight: '700', letterSpacing: -0.1 },
   pickBtnSub: { fontSize: 11, textAlign: 'center' },
 
   // Thumbnail
-  thumbWrap: { borderRadius: 20, borderWidth: 2, overflow: 'hidden', height: 220 },
+  thumbWrap: { borderRadius: 22, borderWidth: 2, overflow: 'hidden', height: 230 },
   thumb: { width: '100%', height: '100%' },
-  thumbOverlay: { position: 'absolute', bottom: 12, right: 12 },
-  changeBtn: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
+  thumbOverlay: { position: 'absolute', bottom: 14, right: 14 },
+  changeBtn: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 9 },
   changeBtnText: { fontSize: 13, fontWeight: '600' },
 
   // Workspace input
-  inputRow: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 4 },
-  input: { fontSize: 14, paddingVertical: 10 },
+  inputRow: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 4 },
+  input: { fontSize: 14, paddingVertical: 12 },
 
   // Error
-  errorBox: { borderRadius: 12, borderWidth: 1, padding: 14, marginTop: 16 },
-  errorText: { fontSize: 13, lineHeight: 19, fontWeight: '500' },
+  errorBox: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, padding: 16, marginTop: 18 },
+  errorText: { fontSize: 13, lineHeight: 20, fontWeight: '500' },
 
   // Action button
-  actionBtn: { borderRadius: 16, paddingVertical: 15, alignItems: 'center', marginTop: 20, justifyContent: 'center', flexDirection: 'row' },
-  actionBtnText: { fontSize: 16, fontWeight: '700' },
+  actionBtn: { borderRadius: 18, paddingVertical: 16, alignItems: 'center', marginTop: 22, justifyContent: 'center', flexDirection: 'row' },
+  actionBtnText: { fontSize: 16, fontWeight: '700', letterSpacing: -0.2 },
   loadingRow: { flexDirection: 'row', alignItems: 'center' },
 
   // Status
-  statusRow: { marginTop: 24, alignItems: 'center' },
-  statusBadge: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 7 },
-  statusText: { fontSize: 13, fontWeight: '700' },
+  statusRow: { marginTop: 26, alignItems: 'center' },
+  statusBadge: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingVertical: 8 },
+  statusText: { fontSize: 13, fontWeight: '700', letterSpacing: 0.2 },
 
   // Result card
-  resultCard: { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 4 },
-  resultCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  visionTag: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
-  visionTagText: { fontSize: 12, fontWeight: '700' },
-  copyBtn: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 5 },
+  resultCard: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, padding: 18, marginBottom: 4 },
+  resultCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  visionTag: { borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 12, paddingVertical: 5 },
+  visionTagText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.2 },
+  copyBtn: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 6 },
   copyBtnText: { fontSize: 12, fontWeight: '600' },
 
   // Again button
-  againBtn: { borderWidth: 1, borderRadius: 14, paddingVertical: 13, alignItems: 'center', marginTop: 16 },
+  againBtn: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, paddingVertical: 14, alignItems: 'center', marginTop: 18 },
   againBtnText: { fontSize: 14, fontWeight: '600' },
 
   // Show more history
-  showMoreBtn: { borderWidth: 1, borderRadius: 12, paddingVertical: 11, alignItems: 'center', marginTop: 4, marginBottom: 8 },
+  showMoreBtn: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingVertical: 12, alignItems: 'center', marginTop: 4, marginBottom: 8 },
   showMoreTxt: { fontSize: 13, fontWeight: '600' },
 
   // Empty state
-  emptyState: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: 24 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8 },
-  emptyHint: { fontSize: 14, lineHeight: 21, textAlign: 'center' },
+  emptyState: { alignItems: 'center', paddingVertical: 44, paddingHorizontal: 28 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', marginBottom: 10, letterSpacing: -0.3 },
+  emptyHint: { fontSize: 14, lineHeight: 22, textAlign: 'center' },
 });

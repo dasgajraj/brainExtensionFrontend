@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Alert,
   Clipboard,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
@@ -58,26 +59,37 @@ function ScreenHeader({ onBack, t }: { onBack: () => void; t: T }) {
   return (
     <View style={[headerStyles.wrap, { borderBottomColor: t.border.subtle }]}>
       <TouchableOpacity
-        style={[headerStyles.back, { backgroundColor: t.background.surface, borderColor: t.border.default }]}
+        style={[
+          headerStyles.back,
+          {
+            backgroundColor: t.background.elevated,
+            ...Platform.select({
+              ios: { shadowColor: t.shadow.card.color, shadowOffset: { width: 0, height: 1 }, shadowOpacity: t.shadow.card.opacity * 0.5, shadowRadius: 3 },
+              android: { elevation: 2 },
+            }),
+          },
+        ]}
         onPress={onBack}
-        activeOpacity={0.8}>
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        activeOpacity={0.75}>
         <Text style={[headerStyles.backIcon, { color: t.text.primary }]}>←</Text>
       </TouchableOpacity>
       <View style={headerStyles.mid}>
         <Text style={[headerStyles.title, { color: t.text.primary }]}>Brain Result</Text>
         <Text style={[headerStyles.sub, { color: t.text.muted }]}>Fetch by Request ID</Text>
       </View>
-      <View style={headerStyles.back} />
+      <View style={headerStyles.spacer} />
     </View>
   );
 }
 const headerStyles = StyleSheet.create({
-  wrap: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1 },
-  back: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 10, borderWidth: 1 },
+  wrap: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 14 },
+  spacer: { width: 40, height: 40 },
   backIcon: { fontSize: 20, lineHeight: 22 },
   mid: { flex: 1, alignItems: 'center' },
-  title: { fontSize: 17, fontWeight: '700' },
-  sub: { fontSize: 11, marginTop: 1 },
+  title: { fontSize: 18, fontWeight: '700', letterSpacing: -0.3 },
+  sub: { fontSize: 11, marginTop: 2, letterSpacing: 0.2 },
 });
 
 function SectionLabel({ text, t }: { text: string; t: T }) {
@@ -105,9 +117,9 @@ function MetaRow({ label, value, valueColor, mono, t }: {
   );
 }
 const metaRowStyles = StyleSheet.create({
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 11, borderBottomWidth: 1 },
-  label: { fontSize: 13, flex: 1 },
-  value: { fontSize: 13, fontWeight: '600', flex: 1.6, textAlign: 'right' },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  label: { fontSize: 13, flex: 1, letterSpacing: 0.1 },
+  value: { fontSize: 13, fontWeight: '600', flex: 1.6, textAlign: 'right', letterSpacing: -0.1 },
 });
 
 function ConfidenceBar({ value, t }: { value: number; t: T }) {
@@ -147,7 +159,7 @@ function StatusBadge({ status, t }: { status: string; t: T }) {
   );
 }
 const badge = StyleSheet.create({
-  wrap: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 6, alignSelf: 'flex-start' },
+  wrap: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingVertical: 7, alignSelf: 'flex-start' },
   text: { fontSize: 13, fontWeight: '700', letterSpacing: 0.6 },
 });
 
@@ -241,22 +253,22 @@ const histStyles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 8,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: 10,
     overflow: 'hidden',
   },
   accent: { width: 4, alignSelf: 'stretch' },
-  body: { flex: 1, paddingVertical: 12, paddingHorizontal: 12 },
-  queryText: { fontSize: 13, fontWeight: '600', lineHeight: 18, marginBottom: 6 },
+  body: { flex: 1, paddingVertical: 14, paddingHorizontal: 14 },
+  queryText: { fontSize: 13, fontWeight: '600', lineHeight: 19, marginBottom: 7 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 5 },
-  lobeBadge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  lobeBadgeText: { fontSize: 10, fontWeight: '700' },
-  modeBadge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  lobeBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  lobeBadgeText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.2 },
+  modeBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
   modeBadgeText: { fontSize: 10, fontWeight: '700', textTransform: 'capitalize' },
-  time: { fontSize: 10, marginLeft: 'auto' },
-  reqId: { fontSize: 10, fontFamily: 'monospace' },
-  deleteBtn: { borderRadius: 8, padding: 8, margin: 10 },
+  time: { fontSize: 10, marginLeft: 'auto', letterSpacing: 0.2 },
+  reqId: { fontSize: 10, fontFamily: 'monospace', letterSpacing: 0.3 },
+  deleteBtn: { borderRadius: 10, padding: 9, margin: 10 },
   deleteIcon: { fontSize: 12, fontWeight: '700' },
 });
 
@@ -644,74 +656,74 @@ export default function BrainResultScreen({ onBack, prefillId }: BrainResultScre
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  scroll: { paddingHorizontal: 16, paddingBottom: 32 },
+  scroll: { paddingHorizontal: 18, paddingBottom: 36 },
 
   // Search bar (compact)
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
+    paddingHorizontal: 16,
     paddingVertical: 4,
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 14,
   },
   hashIcon: { fontSize: 18, fontWeight: '700' },
-  idInput: { flex: 1, fontSize: 14, paddingVertical: 10, fontFamily: 'monospace' },
-  searchGoBtn: { borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7 },
+  idInput: { flex: 1, fontSize: 14, paddingVertical: 12, fontFamily: 'monospace' },
+  searchGoBtn: { borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 },
   searchGoBtnText: { fontSize: 13, fontWeight: '700' },
 
   // Empty state
-  emptyState: { alignItems: 'center', paddingVertical: 48, paddingHorizontal: 24 },
-  emptyIcon: { fontSize: 44, marginBottom: 14 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8 },
-  emptyHint: { fontSize: 14, lineHeight: 21, textAlign: 'center' },
+  emptyState: { alignItems: 'center', paddingVertical: 52, paddingHorizontal: 28 },
+  emptyIcon: { fontSize: 44, marginBottom: 16 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', marginBottom: 10, letterSpacing: -0.3 },
+  emptyHint: { fontSize: 14, lineHeight: 22, textAlign: 'center' },
 
   // Error
-  errorBox: { borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 12 },
-  errorText: { fontSize: 13, lineHeight: 19, fontWeight: '500' },
+  errorBox: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, padding: 16, marginBottom: 14 },
+  errorText: { fontSize: 13, lineHeight: 20, fontWeight: '500' },
 
   // Status row
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
-  durationBadge: { flexDirection: 'row', alignItems: 'center', borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 6, gap: 5 },
+  durationBadge: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, paddingVertical: 7, gap: 6 },
   durationIcon: { fontSize: 13 },
-  durationText: { fontSize: 13, fontWeight: '600' },
+  durationText: { fontSize: 13, fontWeight: '600', letterSpacing: -0.1 },
 
   // Cards
-  card: { borderRadius: 16, borderWidth: 1, paddingHorizontal: 16, marginBottom: 4 },
+  card: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 18, marginBottom: 4 },
 
   // Query
-  queryWrap: { paddingVertical: 14 },
-  queryLabel: { fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 },
-  queryText: { fontSize: 15, lineHeight: 23, fontWeight: '500' },
+  queryWrap: { paddingVertical: 16 },
+  queryLabel: { fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 7 },
+  queryText: { fontSize: 15, lineHeight: 24, fontWeight: '500' },
 
   // Context chips
-  contextChipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, marginBottom: 12 },
-  contextChip: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8, alignItems: 'center', minWidth: 90 },
-  contextChipLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 },
-  contextChipValue: { fontSize: 13, fontWeight: '700', textTransform: 'capitalize' },
+  contextChipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 10, marginBottom: 14 },
+  contextChip: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, paddingVertical: 10, alignItems: 'center', minWidth: 92 },
+  contextChipLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 3 },
+  contextChipValue: { fontSize: 13, fontWeight: '700', textTransform: 'capitalize', letterSpacing: -0.1 },
 
   // Router reason
-  routerReasonWrap: { paddingVertical: 12, borderBottomWidth: 1 },
-  routerReasonChip: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8, marginTop: 8 },
-  routerReasonText: { fontSize: 13, lineHeight: 20 },
+  routerReasonWrap: { paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
+  routerReasonChip: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, paddingVertical: 10, marginTop: 8 },
+  routerReasonText: { fontSize: 13, lineHeight: 21 },
 
   // Output
-  outputCard: { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 4 },
-  outputCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  lobeBadge: { alignSelf: 'flex-start', borderRadius: 10, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
-  lobeBadgeText: { fontSize: 12, fontWeight: '700' },
+  outputCard: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, padding: 18, marginBottom: 4 },
+  outputCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  lobeBadge: { alignSelf: 'flex-start', borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 12, paddingVertical: 5 },
+  lobeBadgeText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.2 },
   outputText: { fontSize: 15, lineHeight: 26 },
-  copyBtn: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 5 },
+  copyBtn: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 6 },
   copyBtnText: { fontSize: 12, fontWeight: '600' },
 
   // Refetch
-  refetchBtn: { borderWidth: 1, borderRadius: 14, paddingVertical: 13, alignItems: 'center', marginTop: 16, flexDirection: 'row', justifyContent: 'center' },
+  refetchBtn: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, paddingVertical: 14, alignItems: 'center', marginTop: 18, flexDirection: 'row', justifyContent: 'center' },
   refetchText: { fontSize: 14, fontWeight: '600' },
 
   // History section
-  histSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 16 },
-  histSectionTitle: { fontSize: 17, fontWeight: '700' },
+  histSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, marginTop: 18 },
+  histSectionTitle: { fontSize: 17, fontWeight: '700', letterSpacing: -0.2 },
   histClearAll: { fontSize: 13, fontWeight: '600' },
 });

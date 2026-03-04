@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StatusBar,
   Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
@@ -46,14 +47,14 @@ type TokensType = ReturnType<typeof getTokens>;
 
 function SectionHeader({ title, t }: { title: string; t: TokensType }) {
   return (
-    <View style={[sectionHeaderStyles.wrap, { borderBottomColor: t.border.subtle }]}>
-      <Text style={[sectionHeaderStyles.title, { color: t.primary.accent }]}>{title}</Text>
+    <View style={sectionHeaderStyles.wrap}>
+      <Text style={[sectionHeaderStyles.title, { color: t.text.muted }]}>{title}</Text>
     </View>
   );
 }
 const sectionHeaderStyles = StyleSheet.create({
-  wrap: { borderBottomWidth: 1, paddingBottom: 6, marginBottom: 4, marginTop: 20 },
-  title: { fontSize: 11, fontWeight: '700', letterSpacing: 1.4, textTransform: 'uppercase' },
+  wrap: { paddingBottom: 8, marginBottom: 4, marginTop: 22 },
+  title: { fontSize: 11, fontWeight: '700', letterSpacing: 1.6, textTransform: 'uppercase' },
 });
 
 function InfoRow({
@@ -103,11 +104,11 @@ const infoRowStyles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+    paddingVertical: 13,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  label: { fontSize: 13, flex: 1 },
-  value: { fontSize: 13, fontWeight: '600', flex: 1.4, textAlign: 'right' },
+  label: { fontSize: 13, flex: 1, letterSpacing: 0.1 },
+  value: { fontSize: 13, fontWeight: '600', flex: 1.4, textAlign: 'right', letterSpacing: -0.1 },
 });
 
 function BadgeRow({ label, items, t }: { label: string; items: string[]; t: TokensType }) {
@@ -132,13 +133,13 @@ function BadgeRow({ label, items, t }: { label: string; items: string[]; t: Toke
 }
 const badgeRowStyles = StyleSheet.create({
   wrap: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+    paddingVertical: 13,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  label: { fontSize: 13, marginBottom: 8 },
-  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  badge: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
-  badgeText: { fontSize: 12, fontWeight: '600' },
+  label: { fontSize: 13, marginBottom: 10, letterSpacing: 0.1 },
+  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  badge: { borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 12, paddingVertical: 5 },
+  badgeText: { fontSize: 12, fontWeight: '600', letterSpacing: 0.2 },
   empty: { fontSize: 13 },
 });
 
@@ -172,15 +173,15 @@ const settingChipStyles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    gap: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    gap: 8,
     width: '47%',
   },
   dot: { width: 7, height: 7, borderRadius: 4 },
-  label: { fontSize: 12, fontWeight: '600', flexShrink: 1 },
+  label: { fontSize: 12, fontWeight: '600', flexShrink: 1, letterSpacing: 0.1 },
 });
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
@@ -219,13 +220,23 @@ function ProfileScreen({ onBack }: ProfileScreenProps) {
       {/* ── Top Bar ── */}
       <View style={[styles.topBar, { borderBottomColor: t.border.subtle }]}>
         <TouchableOpacity
-          style={[styles.backBtn, { backgroundColor: t.background.surface, borderColor: t.border.default }]}
+          style={[
+            styles.backBtn,
+            {
+              backgroundColor: t.background.elevated,
+              ...Platform.select({
+                ios: { shadowColor: t.shadow.card.color, shadowOffset: { width: 0, height: 1 }, shadowOpacity: t.shadow.card.opacity * 0.5, shadowRadius: 3 },
+                android: { elevation: 2 },
+              }),
+            },
+          ]}
           onPress={onBack}
-          activeOpacity={0.8}>
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          activeOpacity={0.75}>
           <Text style={[styles.backIcon, { color: t.text.primary }]}>←</Text>
         </TouchableOpacity>
         <Text style={[styles.topBarTitle, { color: t.text.primary }]}>Profile</Text>
-        <View style={styles.backBtn} />
+        <View style={styles.spacer} />
       </View>
 
       <ScrollView
@@ -234,8 +245,18 @@ function ProfileScreen({ onBack }: ProfileScreenProps) {
 
         {/* ── Avatar + Name Hero ── */}
         <View style={styles.hero}>
-          <View style={[styles.avatarCircle, { backgroundColor: t.primary.default + '30', borderColor: t.primary.default }]}>
-            <Text style={[styles.avatarText, { color: t.primary.accent }]}>
+          <View style={[
+            styles.avatarCircle,
+            {
+              backgroundColor: t.primary.tint,
+              borderColor: t.border.strong,
+              ...Platform.select({
+                ios: { shadowColor: t.shadow.elevated.color, shadowOffset: t.shadow.elevated.offset, shadowOpacity: t.shadow.elevated.opacity * 0.5, shadowRadius: 12 },
+                android: { elevation: 6 },
+              }),
+            },
+          ]}>
+            <Text style={[styles.avatarText, { color: t.text.primary }]}>
               {initials(user?.name ?? displayName)}
             </Text>
           </View>
@@ -245,15 +266,25 @@ function ProfileScreen({ onBack }: ProfileScreenProps) {
           <Text style={[styles.heroEmail, { color: t.text.secondary }]}>
             {user?.email ?? '—'}
           </Text>
-          <View style={[styles.planBadge, { backgroundColor: t.primary.default + '22', borderColor: t.border.default }]}>
-            <Text style={[styles.planText, { color: t.primary.accent }]}>
+          <View style={[styles.planBadge, { backgroundColor: t.background.elevated, borderColor: t.border.default }]}>
+            <Text style={[styles.planText, { color: t.text.primary }]}>
               {user?.plan ?? 'free'} plan
             </Text>
           </View>
         </View>
 
         {/* ── User Info ── */}
-        <View style={[styles.card, { backgroundColor: t.background.surface, borderColor: t.border.default }]}>
+        <View style={[
+          styles.card,
+          {
+            backgroundColor: t.background.surface,
+            borderColor: t.border.subtle,
+            ...Platform.select({
+              ios: { shadowColor: t.shadow.card.color, shadowOffset: t.shadow.card.offset, shadowOpacity: t.shadow.card.opacity, shadowRadius: t.shadow.card.radius },
+              android: { elevation: t.shadow.card.elevation },
+            }),
+          },
+        ]}>
           <SectionHeader title="Account Info" t={t} />
           <InfoRow label="Full Name" value={user?.name} t={t} />
           <InfoRow label="Email" value={user?.email} t={t} />
@@ -264,7 +295,17 @@ function ProfileScreen({ onBack }: ProfileScreenProps) {
         </View>
 
         {/* ── Analytics ── */}
-        <View style={[styles.card, { backgroundColor: t.background.surface, borderColor: t.border.default }]}>
+        <View style={[
+          styles.card,
+          {
+            backgroundColor: t.background.surface,
+            borderColor: t.border.subtle,
+            ...Platform.select({
+              ios: { shadowColor: t.shadow.card.color, shadowOffset: t.shadow.card.offset, shadowOpacity: t.shadow.card.opacity, shadowRadius: t.shadow.card.radius },
+              android: { elevation: t.shadow.card.elevation },
+            }),
+          },
+        ]}>
           <SectionHeader title="Analytics" t={t} />
           <InfoRow label="Total Memories" value={String(user?.analytics?.totalMemories ?? 0)} t={t} />
           <InfoRow label="Total Files" value={String(user?.analytics?.totalFiles ?? 0)} t={t} />
@@ -273,7 +314,17 @@ function ProfileScreen({ onBack }: ProfileScreenProps) {
         </View>
 
         {/* ── Settings ── */}
-        <View style={[styles.card, { backgroundColor: t.background.surface, borderColor: t.border.default }]}>
+        <View style={[
+          styles.card,
+          {
+            backgroundColor: t.background.surface,
+            borderColor: t.border.subtle,
+            ...Platform.select({
+              ios: { shadowColor: t.shadow.card.color, shadowOffset: t.shadow.card.offset, shadowOpacity: t.shadow.card.opacity, shadowRadius: t.shadow.card.radius },
+              android: { elevation: t.shadow.card.elevation },
+            }),
+          },
+        ]}>
           <SectionHeader title="Settings" t={t} />
           <View style={styles.settingsGrid}>
             <SettingChip label="Memory" enabled={user?.settings?.memoryEnabled} t={t} />
@@ -286,7 +337,17 @@ function ProfileScreen({ onBack }: ProfileScreenProps) {
         </View>
 
         {/* ── Cognitive Profile ── */}
-        <View style={[styles.card, { backgroundColor: t.background.surface, borderColor: t.border.default }]}>
+        <View style={[
+          styles.card,
+          {
+            backgroundColor: t.background.surface,
+            borderColor: t.border.subtle,
+            ...Platform.select({
+              ios: { shadowColor: t.shadow.card.color, shadowOffset: t.shadow.card.offset, shadowOpacity: t.shadow.card.opacity, shadowRadius: t.shadow.card.radius },
+              android: { elevation: t.shadow.card.elevation },
+            }),
+          },
+        ]}>
           <SectionHeader title="Cognitive Profile" t={t} />
           <InfoRow label="Learning Style" value={user?.cognitiveProfile?.learningStyle} t={t} />
           <InfoRow label="Reasoning Style" value={user?.cognitiveProfile?.reasoningStyle} t={t} />
@@ -317,58 +378,59 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  backBtn: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 10, borderWidth: 1 },
+  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 14 },
+  spacer: { width: 40, height: 40 },
   backIcon: { fontSize: 20, lineHeight: 22 },
-  topBarTitle: { fontSize: 17, fontWeight: '700' },
+  topBarTitle: { fontSize: 18, fontWeight: '700', letterSpacing: -0.3 },
 
   // Hero
-  hero: { alignItems: 'center', paddingVertical: 28, paddingHorizontal: 16 },
+  hero: { alignItems: 'center', paddingVertical: 32, paddingHorizontal: 18 },
   avatarCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 2,
+    width: 88,
+    height: 88,
+    borderRadius: 28,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  avatarText: { fontSize: 28, fontWeight: '700' },
-  heroName: { fontSize: 22, fontWeight: '700', marginBottom: 4 },
-  heroEmail: { fontSize: 14, marginBottom: 10 },
-  planBadge: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 4 },
-  planText: { fontSize: 12, fontWeight: '600', textTransform: 'capitalize', letterSpacing: 0.5 },
+  avatarText: { fontSize: 30, fontWeight: '800', letterSpacing: -0.5 },
+  heroName: { fontSize: 24, fontWeight: '800', marginBottom: 4, letterSpacing: -0.5 },
+  heroEmail: { fontSize: 14, marginBottom: 12, letterSpacing: 0.1 },
+  planBadge: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, paddingVertical: 6 },
+  planText: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 },
 
   // Card
   card: {
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingHorizontal: 16,
-    paddingBottom: 4,
-    marginHorizontal: 16,
-    marginBottom: 14,
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 18,
+    paddingBottom: 6,
+    marginHorizontal: 18,
+    marginBottom: 16,
   },
 
-  scroll: { paddingBottom: 32 },
+  scroll: { paddingBottom: 36 },
 
   // Settings grid
-  settingsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingVertical: 12 },
+  settingsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingVertical: 14 },
 
   // Logout
   logoutBtn: {
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingVertical: 14,
+    borderWidth: 1.5,
+    borderRadius: 16,
+    paddingVertical: 15,
     alignItems: 'center',
-    marginHorizontal: 16,
-    marginTop: 6,
+    marginHorizontal: 18,
+    marginTop: 8,
   },
-  logoutText: { fontSize: 15, fontWeight: '600' },
+  logoutText: { fontSize: 15, fontWeight: '700', letterSpacing: 0.2 },
 
-  bottomSpacer: { height: 24 },
+  bottomSpacer: { height: 32 },
 });
 
 export default ProfileScreen;

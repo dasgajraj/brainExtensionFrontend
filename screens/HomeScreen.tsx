@@ -39,6 +39,7 @@ import {
   BackHandler,
   Animated,
   Image,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
@@ -144,10 +145,10 @@ function NavCard({ data, onPress, t, index }: NavCardProps) {
     Animated.spring(scaleAnim, {
       toValue: 1,
       useNativeDriver: true,
-      delay: index * 50,
-      damping: 18,
-      stiffness: 200,
-      mass: 0.7,
+      delay: index * 65,
+      damping: 16,
+      stiffness: 180,
+      mass: 0.8,
     }).start();
   }, [scaleAnim, index]);
 
@@ -160,33 +161,44 @@ function NavCard({ data, onPress, t, index }: NavCardProps) {
           {
             width: CARD_W,
             backgroundColor: t.background.surface,
-            borderColor: data.accentColor + '40',
+            borderColor: t.border.subtle,
+            ...Platform.select({
+              ios: {
+                shadowColor: t.shadow.card.color,
+                shadowOffset: t.shadow.card.offset,
+                shadowOpacity: t.shadow.card.opacity,
+                shadowRadius: t.shadow.card.radius,
+              },
+              android: { elevation: t.shadow.card.elevation },
+            }),
           },
         ]}
         onPress={onPress}
-        activeOpacity={0.82}>
-        <View style={[cardStyles.iconWrap, { backgroundColor: data.accentColor + '1A' }]}>
+        activeOpacity={0.78}>
+        <View style={[cardStyles.iconWrap, { backgroundColor: data.accentColor + '12' }]}>
           {data.useLogo
-            ? <Image source={require('../assets/app-logo.png')} style={{ width: 26, height: 26, tintColor: data.accentColor }} resizeMode="contain" />
-            : <Icon size={22} color={data.accentColor} />}
+            ? <Image source={require('../assets/app-logo.png')} style={{ width: 24, height: 24, tintColor: data.accentColor }} resizeMode="contain" />
+            : <Icon size={20} color={data.accentColor} />}
         </View>
         <Text style={[cardStyles.title, { color: t.text.primary }]}>{data.title}</Text>
-        <Text style={[cardStyles.desc, { color: t.text.muted }]} numberOfLines={2}>
+        <Text style={[cardStyles.desc, { color: t.text.secondary }]} numberOfLines={2}>
           {data.description}
         </Text>
-        <View style={[cardStyles.arrow, { backgroundColor: data.accentColor + '22' }]}>
-          <IconChevronRight size={14} color={data.accentColor} />
+        <View style={cardStyles.arrowRow}>
+          <Text style={[cardStyles.arrowLabel, { color: data.accentColor }]}>Open</Text>
+          <IconChevronRight size={12} color={data.accentColor} />
         </View>
       </TouchableOpacity>
     </Animated.View>
   );
 }
 const cardStyles = StyleSheet.create({
-  card: { borderRadius: 18, borderWidth: 1, padding: 16, marginBottom: 12 },
-  iconWrap: { width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  title: { fontSize: 15, fontWeight: '700', marginBottom: 4 },
-  desc: { fontSize: 12, lineHeight: 17, marginBottom: 12 },
-  arrow: { alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  card: { borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, padding: 18, marginBottom: 14 },
+  iconWrap: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  title: { fontSize: 16, fontWeight: '700', marginBottom: 4, letterSpacing: -0.3 },
+  desc: { fontSize: 12.5, lineHeight: 18, marginBottom: 14 },
+  arrowRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  arrowLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.4, textTransform: 'uppercase' },
 });
 
 // ─── Main Screen ────────────────────────────────────────────────────────────
@@ -333,26 +345,46 @@ function HomeScreen() {
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <View style={styles.header}>
         <TouchableOpacity
-          style={[styles.menuBtn, { backgroundColor: t.background.surface, borderColor: t.border.default }]}
+          style={[
+            styles.menuBtn,
+            {
+              backgroundColor: t.background.elevated,
+              ...Platform.select({
+                ios: { shadowColor: t.shadow.card.color, shadowOffset: { width: 0, height: 1 }, shadowOpacity: t.shadow.card.opacity * 0.6, shadowRadius: 4 },
+                android: { elevation: 2 },
+              }),
+            },
+          ]}
           onPress={() => setSidebarOpen(true)}
-          activeOpacity={0.8}>
-          <IconMenu size={20} color={t.text.primary} />
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          activeOpacity={0.75}>
+          <IconMenu size={19} color={t.text.primary} />
         </TouchableOpacity>
-        <View style={{ flex: 1, marginLeft: 12 }}>
+        <View style={styles.headerText}>
           <Text style={[styles.greeting, { color: t.text.muted }]}>Welcome back,</Text>
-          <Text style={[styles.username, { color: t.text.primary }]}>{displayName}</Text>
+          <Text style={[styles.username, { color: t.text.primary }]} numberOfLines={1}>{displayName}</Text>
         </View>
         <TouchableOpacity
-          style={[styles.themeBtn, { backgroundColor: t.background.surface, borderColor: t.border.default }]}
+          style={[
+            styles.themeBtn,
+            {
+              backgroundColor: t.background.elevated,
+              ...Platform.select({
+                ios: { shadowColor: t.shadow.card.color, shadowOffset: { width: 0, height: 1 }, shadowOpacity: t.shadow.card.opacity * 0.6, shadowRadius: 4 },
+                android: { elevation: 2 },
+              }),
+            },
+          ]}
           onPress={() => dispatch(toggleTheme())}
-          activeOpacity={0.8}>
-          {isDark ? <IconSun size={17} color={t.text.primary} /> : <IconMoon size={17} color={t.text.primary} />}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          activeOpacity={0.75}>
+          {isDark ? <IconSun size={16} color={t.text.primary} /> : <IconMoon size={16} color={t.text.primary} />}
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.avatarBtn, { backgroundColor: t.primary.default + '22', borderColor: t.primary.default }]}
+          style={[styles.avatarBtn, { backgroundColor: t.primary.tint, borderColor: t.border.strong }]}
           onPress={() => navigate('profile')}
-          activeOpacity={0.8}>
-          <Text style={[styles.avatarText, { color: t.primary.accent }]}>{avatarLetters}</Text>
+          activeOpacity={0.75}>
+          <Text style={[styles.avatarText, { color: t.text.primary }]}>{avatarLetters}</Text>
         </TouchableOpacity>
       </View>
 
@@ -364,13 +396,13 @@ function HomeScreen() {
         const hasMore = dreams.length > INITIAL_COUNT;
         const unseenCount = dreams.filter(d => !seenIds.has(d.id)).length;
         return (
-          <View style={{ marginBottom: 20 }}>
+          <View style={{ marginBottom: 24 }}>
             {/* Header row */}
             <View style={styles.storiesHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Text style={[styles.sectionTitle, { color: t.text.primary, marginBottom: 0 }]}>Brain Dreams</Text>
                 {unseenCount > 0 && (
-                  <View style={[styles.unseenBadge, { backgroundColor: t.primary.default }]}>
+                  <View style={[styles.unseenBadge, { backgroundColor: t.text.primary }]}>
                     <Text style={[styles.unseenBadgeText, { color: t.text.onPrimary }]}>{unseenCount}</Text>
                   </View>
                 )}
@@ -378,9 +410,10 @@ function HomeScreen() {
               {hasMore && (
                 <TouchableOpacity
                   onPress={() => setShowAllDreams(v => !v)}
-                  activeOpacity={0.7}>
-                  <Text style={[styles.seeAll, { color: t.primary.accent }]}>
-                    {showAllDreams ? 'Show less' : `Show all (${dreams.length})`}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  activeOpacity={0.65}>
+                  <Text style={[styles.seeAll, { color: t.text.secondary }]}>
+                    {showAllDreams ? 'Show less' : `See all ${dreams.length}`}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -392,15 +425,14 @@ function HomeScreen() {
               horizontal
               showsHorizontalScrollIndicator={false}
               keyExtractor={d => d.id}
-              contentContainerStyle={{ gap: 10, paddingVertical: 8 }}
+              contentContainerStyle={{ gap: 12, paddingVertical: 10 }}
               renderItem={({ item, index }) => {
                 const isSeen = seenIds.has(item.id);
-                // Unseen: vibrant accent color; seen: grayscale desaturated
                 const colorIdx = dreams.indexOf(item) % STORY_COLORS.length;
                 const accent = STORY_COLORS[colorIdx];
                 return (
                   <TouchableOpacity
-                    activeOpacity={0.85}
+                    activeOpacity={0.8}
                     onPress={async () => {
                       await markDreamAsSeen(item.id);
                       setSeenIds(prev => new Set([...prev, item.id]));
@@ -410,33 +442,32 @@ function HomeScreen() {
                     style={[
                       styles.storyCard,
                       isSeen
-                        ? { borderColor: isDark ? '#2a2a2a' : '#d0d0d0', borderWidth: 1, opacity: 0.55 }
+                        ? { borderColor: t.border.default, borderWidth: 1.5, opacity: 0.5 }
                         : { borderColor: accent, borderWidth: 2.5 },
                     ]}>
                     <View style={[
                       styles.storyInner,
                       { backgroundColor: isSeen
-                          ? (isDark ? '#1a1a1a' : '#e0e0e0')
-                          : accent + 'CC' },
+                          ? t.background.elevated
+                          : accent + 'DD' },
                     ]}>
-                      {/* Date label — relative time */}
                       {!isSeen && item.date ? (
                         <Text style={styles.storyDate} numberOfLines={1}>{dreamTimeAgo(item.date)}</Text>
                       ) : null}
                       <Text
                         style={[styles.storyTitle, {
-                          color: isSeen ? (isDark ? '#4a4a4a' : '#888888') : '#FFF',
+                          color: isSeen ? t.text.muted : '#FFF',
                         }]}
                         numberOfLines={3}>
                         {item.title}
                       </Text>
                       {!isSeen && (
-                        <View style={[styles.storyBadge, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
+                        <View style={styles.storyBadge}>
                           <Text style={styles.storyBadgeText}>NEW</Text>
                         </View>
                       )}
                       {isSeen && (
-                        <Text style={[styles.storySeenLabel, { color: isDark ? '#3a3a3a' : '#aaaaaa' }]}>seen</Text>
+                        <Text style={[styles.storySeenLabel, { color: t.text.ghost }]}>seen</Text>
                       )}
                     </View>
                   </TouchableOpacity>
@@ -451,18 +482,25 @@ function HomeScreen() {
       <Text style={[styles.sectionTitle, { color: t.text.primary }]}>Quick Actions</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.quickRow}>
         {[
-          { key: 'brainAsk' as Page, icon: IconBrain, label: 'Ask Brain', color: '#8b5cf6' },
-          { key: 'agent' as Page, icon: IconBot, label: 'AI Agent', color: '#06b6d4' },
-          { key: 'files' as Page, icon: IconFolder, label: 'Files', color: '#0ea5e9' },
-          { key: 'neural' as Page, icon: IconNetwork, label: 'Neural Graph', color: '#ec4899' },
+          { key: 'brainAsk' as Page, icon: IconBrain, label: 'Ask Brain' },
+          { key: 'agent' as Page, icon: IconBot, label: 'AI Agent' },
+          { key: 'files' as Page, icon: IconFolder, label: 'Files' },
+          { key: 'neural' as Page, icon: IconNetwork, label: 'Neural Graph' },
         ].map(q => (
           <TouchableOpacity
             key={q.key}
-            style={[styles.quickChip, { backgroundColor: q.color + '14', borderColor: q.color + '30' }]}
+            style={[
+              styles.quickChip,
+              {
+                backgroundColor: t.background.elevated,
+                borderColor: t.border.default,
+              },
+            ]}
             onPress={() => navigate(q.key)}
-            activeOpacity={0.8}>
-            <q.icon size={16} color={q.color} />
-            <Text style={[styles.quickLabel, { color: q.color }]}>{q.label}</Text>
+            activeOpacity={0.72}>
+            <q.icon size={14} color={t.text.secondary} />
+            <Text style={[styles.quickLabel, { color: t.text.primary }]}>{q.label}</Text>
+            <IconChevronRight size={11} color={t.text.muted} />
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -482,7 +520,7 @@ function HomeScreen() {
       </View>
 
       {/* ── Bottom spacer for nav bar */}
-      <View style={{ height: 24 }} />
+      <View style={{ height: 32 }} />
     </ScrollView>
   );
 
@@ -537,16 +575,17 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   safe: { flex: 1 },
   pageContent: { flex: 1 },
-  scroll: { paddingHorizontal: 16, paddingTop: 14 },
+  scroll: { paddingHorizontal: 18, paddingTop: 16 },
 
   // Header
-  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  menuBtn: { width: 40, height: 40, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  greeting: { fontSize: 12, marginBottom: 1, letterSpacing: 0.3 },
-  username: { fontSize: 20, fontWeight: '800' },
-  themeBtn: { width: 38, height: 38, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
-  avatarBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', borderWidth: 2 },
-  avatarText: { fontSize: 14, fontWeight: '700' },
+  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
+  headerText: { flex: 1, marginLeft: 14 },
+  menuBtn: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  greeting: { fontSize: 11, marginBottom: 2, letterSpacing: 0.6, textTransform: 'uppercase', fontWeight: '500' },
+  username: { fontSize: 22, fontWeight: '800', letterSpacing: -0.5 },
+  themeBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  avatarBtn: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5 },
+  avatarText: { fontSize: 13, fontWeight: '800', letterSpacing: 0.3 },
 
   // Banner
   banner: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, borderWidth: 1, padding: 14, marginBottom: 14 },
@@ -563,25 +602,25 @@ const styles = StyleSheet.create({
   infoDivider: { width: 1, marginVertical: 4 },
 
   // Quick actions
-  quickRow: { marginBottom: 20 },
-  quickChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 1, marginRight: 10 },
-  quickLabel: { fontSize: 12, fontWeight: '700' },
+  quickRow: { marginBottom: 28 },
+  quickChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 11, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, marginRight: 10 },
+  quickLabel: { fontSize: 13, fontWeight: '600', letterSpacing: -0.1 },
 
   // Section
-  sectionTitle: { fontSize: 16, fontWeight: '800', marginBottom: 12, letterSpacing: 0.1 },
+  sectionTitle: { fontSize: 17, fontWeight: '800', marginBottom: 14, letterSpacing: -0.2 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
 
   // Dreams stories
-  storiesHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  seeAll: { fontSize: 13, fontWeight: '600' },
-  storyCard: { width: 84, height: 132, borderRadius: 14, overflow: 'hidden' },
-  storyInner: { flex: 1, padding: 8, justifyContent: 'flex-end' },
-  storyDate: { fontSize: 8, color: 'rgba(255,255,255,0.7)', marginBottom: 3, fontWeight: '600' },
-  storyTitle: { fontSize: 10, fontWeight: '700', lineHeight: 14 },
-  storyBadge: { alignSelf: 'flex-start', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2, marginTop: 4 },
-  storyBadgeText: { fontSize: 8, fontWeight: '800', color: '#FFF', letterSpacing: 0.5 },
-  storySeenLabel: { fontSize: 8, fontWeight: '600', marginTop: 4, letterSpacing: 0.4 },
-  unseenBadge: { minWidth: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
+  storiesHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  seeAll: { fontSize: 13, fontWeight: '600', letterSpacing: 0.1 },
+  storyCard: { width: 90, height: 140, borderRadius: 18, overflow: 'hidden' },
+  storyInner: { flex: 1, padding: 10, justifyContent: 'flex-end' },
+  storyDate: { fontSize: 8, color: 'rgba(255,255,255,0.75)', marginBottom: 4, fontWeight: '600', letterSpacing: 0.2 },
+  storyTitle: { fontSize: 10, fontWeight: '700', lineHeight: 14, letterSpacing: -0.1 },
+  storyBadge: { alignSelf: 'flex-start', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, marginTop: 5, backgroundColor: 'rgba(255,255,255,0.2)' },
+  storyBadgeText: { fontSize: 7, fontWeight: '800', color: '#FFF', letterSpacing: 0.8, textTransform: 'uppercase' },
+  storySeenLabel: { fontSize: 8, fontWeight: '600', marginTop: 5, letterSpacing: 0.5 },
+  unseenBadge: { minWidth: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
   unseenBadgeText: { fontSize: 10, fontWeight: '800' },
   seeMoreBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 6, paddingVertical: 8, borderRadius: 10, borderWidth: 1 },
   seeMoreTxt: { fontSize: 12, fontWeight: '600' },

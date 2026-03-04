@@ -369,33 +369,33 @@ function NodeSheet({ node, links, allNodes, t, isDark, onClose }: {
 const sheetSt = StyleSheet.create({
   backdrop: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
   container: {
-    borderTopLeftRadius: 22, borderTopRightRadius: 22, borderWidth: 1, borderBottomWidth: 0,
-    paddingHorizontal: 20, paddingTop: 10, paddingBottom: 30,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: StyleSheet.hairlineWidth, borderBottomWidth: 0,
+    paddingHorizontal: 22, paddingTop: 10, paddingBottom: 34,
   },
-  handle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 14 },
-  topRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  typePill: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 },
+  handle: { width: 38, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
+  typePill: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
   typeDot: { width: 7, height: 7, borderRadius: 4 },
   typeLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.4 },
-  closeBtn: { width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  closeBtn: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   closeTxt: { fontSize: 13, fontWeight: '700' },
-  nodeLabel: { fontSize: 16, fontWeight: '700', lineHeight: 22, marginBottom: 14 },
-  statsWrap: { flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, paddingVertical: 14, marginBottom: 14 },
+  nodeLabel: { fontSize: 17, fontWeight: '700', lineHeight: 23, marginBottom: 16, letterSpacing: -0.2 },
+  statsWrap: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: 16, marginBottom: 16 },
   statCell: { flex: 1, alignItems: 'center' },
   statVal: { fontSize: 18, fontWeight: '800' },
-  statLbl: { fontSize: 9, letterSpacing: 0.5, marginTop: 2, textTransform: 'uppercase' },
-  section: { marginBottom: 12 },
-  sectionTitle: { fontSize: 10, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 },
-  connRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 7 },
-  connDir: { borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2 },
+  statLbl: { fontSize: 9, letterSpacing: 0.6, marginTop: 3, textTransform: 'uppercase' },
+  section: { marginBottom: 14 },
+  sectionTitle: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 10 },
+  connRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 },
+  connDir: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3 },
   connDirText: { fontSize: 8, fontWeight: '800', letterSpacing: 0.5 },
-  connLabel: { flex: 1, fontSize: 12 },
-  connStr: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  connLabel: { flex: 1, fontSize: 12, letterSpacing: -0.1 },
+  connStr: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
   connStrText: { fontSize: 10, fontWeight: '700' },
   moreText: { fontSize: 11, marginTop: 4 },
-  preview: { borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 8 },
-  previewLbl: { fontSize: 10, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 },
-  previewTxt: { fontSize: 13, lineHeight: 19 },
+  preview: { borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 16, marginBottom: 10 },
+  previewLbl: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 10 },
+  previewTxt: { fontSize: 13, lineHeight: 20 },
 });
 
 /* ── Force Graph Canvas ──────────────────────────────────────────────── */
@@ -687,7 +687,7 @@ function GraphLegend({ memCount, fileCount, linkCount, isDark, t }: {
 const lgSt = StyleSheet.create({
   wrap: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
-    borderRadius: 14, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 8,
+    borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingVertical: 9,
   },
   item: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   legendCircle: { width: 16, height: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
@@ -721,12 +721,12 @@ function StatsBar({ nodes, links, isDark, t }: {
 }
 const sbSt = StyleSheet.create({
   wrap: {
-    flexDirection: 'row', borderRadius: 12, borderWidth: 1,
-    paddingVertical: 6, paddingHorizontal: 12, gap: 6,
+    flexDirection: 'row', borderRadius: 16, borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 8, paddingHorizontal: 14, gap: 6,
   },
   cell: { flex: 1, alignItems: 'center' },
   val: { fontSize: 13, fontWeight: '800' },
-  lbl: { fontSize: 8, fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 1 },
+  lbl: { fontSize: 8, fontWeight: '600', letterSpacing: 0.6, textTransform: 'uppercase', marginTop: 2 },
 });
 
 /* ── Main Screen ─────────────────────────────────────────────────────── */
@@ -775,8 +775,16 @@ export default function NeuralGraphScreen({ onBack }: NeuralGraphScreenProps) {
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: t.border.subtle }]}>
         <TouchableOpacity
-          style={[styles.backBtn, { backgroundColor: t.background.surface, borderColor: t.border.default }]}
-          onPress={onBack} activeOpacity={0.8}>
+          style={[styles.backBtn, {
+            backgroundColor: t.background.elevated,
+            ...Platform.select({
+              ios: { shadowColor: t.shadow.card.color, shadowOffset: { width: 0, height: 1 }, shadowOpacity: t.shadow.card.opacity * 0.5, shadowRadius: 3 },
+              android: { elevation: 2 },
+            }),
+          }]}
+          onPress={onBack}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          activeOpacity={0.75}>
           <Text style={[styles.backIcon, { color: t.text.primary }]}>{'<-'}</Text>
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
@@ -897,47 +905,47 @@ export default function NeuralGraphScreen({ onBack }: NeuralGraphScreenProps) {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   header: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16,
-    paddingVertical: 10, borderBottomWidth: 1, gap: 12,
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18,
+    paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, gap: 12,
   },
   backBtn: {
-    width: 38, height: 38, borderRadius: 10, borderWidth: 1,
+    width: 40, height: 40, borderRadius: 14,
     alignItems: 'center', justifyContent: 'center',
   },
   backIcon: { fontSize: 16, fontWeight: '600' },
-  title: { fontSize: 17, fontWeight: '800' },
-  subtitle: { fontSize: 10, letterSpacing: 0.8, marginTop: 1 },
+  title: { fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
+  subtitle: { fontSize: 10, letterSpacing: 0.8, marginTop: 2 },
   badge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6,
   },
   badgeDot: { width: 6, height: 6, borderRadius: 3 },
-  badgeText: { fontSize: 11, fontWeight: '600' },
+  badgeText: { fontSize: 11, fontWeight: '600', letterSpacing: 0.2 },
   canvas: { flex: 1 },
 
   emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 48 },
-  emptyTitle: { fontSize: 20, fontWeight: '800', marginBottom: 10, textAlign: 'center' },
-  emptyBody: { fontSize: 14, lineHeight: 21, textAlign: 'center' },
+  emptyTitle: { fontSize: 22, fontWeight: '800', marginBottom: 12, textAlign: 'center', letterSpacing: -0.4 },
+  emptyBody: { fontSize: 14, lineHeight: 22, textAlign: 'center' },
 
   loadingOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
   loadingCard: {
-    borderRadius: 16, borderWidth: 1, padding: 28, alignItems: 'center', gap: 14,
+    borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, padding: 30, alignItems: 'center', gap: 16,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15, shadowRadius: 10, elevation: 10,
   },
-  loadingText: { fontSize: 13, fontWeight: '600' },
+  loadingText: { fontSize: 13, fontWeight: '600', letterSpacing: -0.1 },
 
   legendPos: { position: 'absolute', top: 10, left: 0, right: 0, alignItems: 'center' },
-  statsPos: { position: 'absolute', bottom: 6, left: 16, right: 16, alignItems: 'center' },
+  statsPos: { position: 'absolute', bottom: 6, left: 18, right: 18, alignItems: 'center' },
 
-  fabWrap: { paddingHorizontal: 20, paddingBottom: 10, paddingTop: 6 },
+  fabWrap: { paddingHorizontal: 20, paddingBottom: 12, paddingTop: 6 },
   fab: {
     alignItems: 'center', justifyContent: 'center',
-    borderRadius: 14, paddingVertical: 14,
+    borderRadius: 18, paddingVertical: 16,
     shadowColor: '#8b5cf6', shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3, shadowRadius: 10, elevation: 6,
   },
-  fabText: { fontSize: 15, fontWeight: '700' },
+  fabText: { fontSize: 15, fontWeight: '700', letterSpacing: -0.2 },
   fabRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   errorText: { fontSize: 13, marginBottom: 8, textAlign: 'center' },
 });

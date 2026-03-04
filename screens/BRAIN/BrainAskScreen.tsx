@@ -9,6 +9,7 @@ import {
   StatusBar,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
@@ -50,21 +51,32 @@ function ScreenHeader({ title, onBack, t }: { title: string; onBack: () => void;
   return (
     <View style={[hdrStyles.wrap, { borderBottomColor: t.border.subtle }]}>
       <TouchableOpacity
-        style={[hdrStyles.back, { backgroundColor: t.background.surface, borderColor: t.border.default }]}
+        style={[
+          hdrStyles.back,
+          {
+            backgroundColor: t.background.elevated,
+            ...Platform.select({
+              ios: { shadowColor: t.shadow.card.color, shadowOffset: { width: 0, height: 1 }, shadowOpacity: t.shadow.card.opacity * 0.5, shadowRadius: 3 },
+              android: { elevation: 2 },
+            }),
+          },
+        ]}
         onPress={onBack}
-        activeOpacity={0.8}>
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        activeOpacity={0.75}>
         <Text style={[hdrStyles.backIcon, { color: t.text.primary }]}>←</Text>
       </TouchableOpacity>
       <Text style={[hdrStyles.title, { color: t.text.primary }]}>{title}</Text>
-      <View style={hdrStyles.back} />
+      <View style={hdrStyles.spacer} />
     </View>
   );
 }
 const hdrStyles = StyleSheet.create({
-  wrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1 },
-  back: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 10, borderWidth: 1 },
+  wrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 14 },
+  spacer: { width: 40, height: 40 },
   backIcon: { fontSize: 20, lineHeight: 22 },
-  title: { fontSize: 17, fontWeight: '700' },
+  title: { fontSize: 18, fontWeight: '700', letterSpacing: -0.3 },
 });
 
 function SectionLabel({ text, t }: { text: string; t: T }) {
@@ -96,9 +108,9 @@ function InfoChip({ label, value, color, t }: { label: string; value: string | n
   );
 }
 const chipStyles = StyleSheet.create({
-  wrap: { flex: 1, borderRadius: 12, borderWidth: 1, padding: 12, margin: 4, alignItems: 'center', minWidth: 80 },
-  label: { fontSize: 10, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4 },
-  value: { fontSize: 14, fontWeight: '700', textAlign: 'center' },
+  wrap: { flex: 1, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 14, margin: 4, alignItems: 'center', minWidth: 80 },
+  label: { fontSize: 10, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 5 },
+  value: { fontSize: 14, fontWeight: '700', textAlign: 'center', letterSpacing: -0.2 },
 });
 
 function ConfidenceBar({ value, t }: { value: number; t: T }) {
@@ -505,69 +517,69 @@ export default function BrainAskScreen({ onBack }: BrainAskScreenProps) {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  scroll: { paddingHorizontal: 16, paddingBottom: 32 },
+  scroll: { paddingHorizontal: 18, paddingBottom: 36 },
 
   // Inputs
   textArea: {
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
+    padding: 16,
     fontSize: 15,
     minHeight: 110,
     lineHeight: 22,
   },
   input: {
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
     fontSize: 15,
   },
 
   // Pills
   pillRow: { flexDirection: 'row', gap: 10, marginBottom: 4 },
-  pill: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 11, borderRadius: 12, borderWidth: 1 },
+  pill: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth },
   pillIcon: { fontSize: 15 },
-  pillText: { fontSize: 13, fontWeight: '600' },
+  pillText: { fontSize: 13, fontWeight: '600', letterSpacing: -0.1 },
 
   // Language pills
   langScroll: { marginBottom: 4 },
-  langContent: { paddingBottom: 4, gap: 8, flexDirection: 'row' },
-  langPill: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, borderWidth: 1 },
+  langContent: { paddingBottom: 4, gap: 10, flexDirection: 'row' },
+  langPill: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 22, borderWidth: StyleSheet.hairlineWidth },
   langText: { fontSize: 13, fontWeight: '500' },
 
   // Buttons
-  primaryBtn: { borderRadius: 16, paddingVertical: 15, alignItems: 'center', marginTop: 24, flexDirection: 'row', justifyContent: 'center' },
-  primaryBtnText: { fontSize: 16, fontWeight: '700' },
-  secondaryBtn: { borderWidth: 1, borderRadius: 14, paddingVertical: 13, alignItems: 'center', marginTop: 12, flexDirection: 'row', justifyContent: 'center' },
+  primaryBtn: { borderRadius: 18, paddingVertical: 16, alignItems: 'center', marginTop: 24, flexDirection: 'row', justifyContent: 'center' },
+  primaryBtnText: { fontSize: 16, fontWeight: '700', letterSpacing: -0.2 },
+  secondaryBtn: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, paddingVertical: 14, alignItems: 'center', marginTop: 12, flexDirection: 'row', justifyContent: 'center' },
   secondaryBtnText: { fontSize: 14, fontWeight: '600' },
 
   // Cards
-  card: { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 4 },
-  idRow: { borderRadius: 10, borderWidth: 1, padding: 12, marginBottom: 12 },
-  idLabel: { fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 },
+  card: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, padding: 18, marginBottom: 4 },
+  idRow: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, padding: 14, marginBottom: 14 },
+  idLabel: { fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 5 },
   idValue: { fontSize: 13, fontFamily: 'monospace', letterSpacing: 0.3 },
 
   // Chips
   chipGrid: { flexDirection: 'row', marginHorizontal: -4, marginVertical: 2 },
-  reasonLabel: { fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4 },
-  reasonText: { fontSize: 13, lineHeight: 19 },
+  reasonLabel: { fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 5 },
+  reasonText: { fontSize: 13, lineHeight: 20 },
 
   // Output
-  outputBox: { borderRadius: 12, borderWidth: 1, padding: 14, marginTop: 4 },
+  outputBox: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, padding: 16, marginTop: 4 },
   outputText: { fontSize: 14, lineHeight: 22 },
   monoText: { fontSize: 12, fontFamily: 'monospace' },
 
   // Polling
-  pollingRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 12, padding: 12, marginTop: 12 },
+  pollingRow: { flexDirection: 'row', alignItems: 'center', borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, padding: 14, marginTop: 12 },
   pollingText: { fontSize: 13, flex: 1 },
 
   // Status
-  statusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  statusBadge: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
-  timestampText: { fontSize: 11 },
+  statusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  statusBadge: { borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 12, paddingVertical: 5 },
+  timestampText: { fontSize: 11, letterSpacing: 0.2 },
 
   // Error
-  errorBox: { borderRadius: 12, borderWidth: 1, padding: 14, marginTop: 4 },
+  errorBox: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, padding: 16, marginTop: 4 },
   errorText: { fontSize: 13, lineHeight: 19, fontWeight: '500' },
 });

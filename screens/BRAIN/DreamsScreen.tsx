@@ -26,6 +26,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../redux/RootReducer';
 import { getTokens } from '../../theme/tokens';
 import { getDreams, DreamEntry } from '../../api/brain.api';
+import { IconVolume, IconVolumeOff, IconX } from '../../components/ui/Icons';
 
 const { width, height } = Dimensions.get('window');
 
@@ -234,7 +235,7 @@ function DreamCardContent({ dream, accent, gradColors, titleSlide, bodyFade, car
         {/* BrainExtension watermark — always visible on share */}
         <Animated.View style={[cdSt.watermarkRow, { opacity: bodyFade }]}>
           <View style={[cdSt.watermarkOrb, { backgroundColor: accent }]}>
-            <Text style={cdSt.watermarkOrbChar}>{'✶'}</Text>
+            <Text style={cdSt.watermarkOrbChar}>{'*'}</Text>
           </View>
           <View>
             <Text style={[cdSt.watermarkTitle, { color: isDark ? 'rgba(255,255,255,0.92)' : accent }]}>BrainExtension</Text>
@@ -536,7 +537,7 @@ export default function DreamsScreen({ onBack, startIndex = 0 }: DreamsScreenPro
           {/* EQ visualiser + mute toggle */}
           <TouchableOpacity style={ss.muteRow} onPress={() => setMuted(m => !m)} activeOpacity={0.8}>
             <EqBars muted={muted} />
-            <Text style={ss.muteIcon}>{muted ? '🔇' : '🔊'}</Text>
+            {muted ? <IconVolumeOff size={18} color='rgba(255,255,255,0.85)' /> : <IconVolume size={18} color='rgba(255,255,255,0.85)' />}
           </TouchableOpacity>
 
           {/* Progress label + share icon on right */}
@@ -554,7 +555,7 @@ export default function DreamsScreen({ onBack, startIndex = 0 }: DreamsScreenPro
 
             {/* Close */}
             <TouchableOpacity style={ss.closeBtn} onPress={onBack} activeOpacity={0.8}>
-              <Text style={ss.closeIcon}>✕</Text>
+              <IconX size={16} color='rgba(255,255,255,0.9)' />
             </TouchableOpacity>
           </View>
         </View>
@@ -564,7 +565,7 @@ export default function DreamsScreen({ onBack, startIndex = 0 }: DreamsScreenPro
           <View />
           <TouchableOpacity style={ss.skipBtn} onPress={goNext} activeOpacity={0.8}>
             <Text style={ss.skipTxt}>
-              {currentIndex >= dreams.length - 1 ? 'Finish  ✓' : 'Skip  →'}
+              {currentIndex >= dreams.length - 1 ? 'Finish' : 'Skip'}
             </Text>
           </TouchableOpacity>
         </View>

@@ -33,6 +33,7 @@ import DreamsScreen from './BRAIN/DreamsScreen';
 import NeuralGraphScreen from './BRAIN/NeuralGraphScreen';
 import FilesScreen from './Files/FilesScreen';
 import AgentScreen from './BRAIN/AgentScreen';
+import MemoryScreen from './Memory/MemoryScreen';
 
 // ── Shared UI
 import {
@@ -52,6 +53,7 @@ import {
   IconChevronRight,
   IconZap,
   IconLogOut,
+  IconMemory,
 } from '../components/ui/Icons';
 import Sidebar from '../components/ui/Sidebar';
 import BottomNavBar from '../components/ui/BottomNavBar';
@@ -67,10 +69,11 @@ type Page =
   | 'dreams'
   | 'neural'
   | 'files'
-  | 'agent';
+  | 'agent'
+  | 'memory';
 
 /** Pages that show in the bottom nav bar (main tabs) */
-const MAIN_TABS = new Set<Page>(['home', 'brainAsk', 'files', 'agent', 'profile']);
+const MAIN_TABS = new Set<Page>(['home', 'brainAsk', 'files', 'agent', 'memory']);
 
 /** Pages rendered as full-screen overlays (their own back buttons) */
 const OVERLAY_PAGES = new Set<Page>(['brainResult', 'translate', 'vision', 'dreams', 'neural']);
@@ -95,6 +98,7 @@ const FEATURE_CARDS: FeatureCardData[] = [
   { key: 'dreams', icon: IconStar, title: 'Brain Dreams', description: 'Explore your cognitive dream journal — subconscious insights', accentColor: '#7c3aed' },
   { key: 'neural', icon: IconNetwork, title: 'Neural Graph', description: 'Visualise semantic connections between your memories and files', accentColor: '#ec4899' },
   { key: 'files', icon: IconFolder, title: 'My Files', description: 'Upload and manage files — images, PDFs, code and more', accentColor: '#0ea5e9' },
+  { key: 'memory', icon: IconMemory, title: 'Memory', description: 'Store, search and manage long-term memories in your Cognitive OS', accentColor: '#14b8a6' },
 ];
 
 // ─── Feature Card ───────────────────────────────────────────────────────────
@@ -169,6 +173,7 @@ function HomeScreen() {
   const [dreams, setDreams] = useState<DreamEntry[]>([]);
   const [seenIds, setSeenIds] = useState<Set<string>>(new Set());
   const [dreamStartIndex, setDreamStartIndex] = useState(0);
+  const [showAllDreams, setShowAllDreams] = useState(false);
 
   const displayName = user?.name ?? user?.email?.split('@')[0] ?? 'Explorer';
   const userEmail = user?.email ?? '';
@@ -236,8 +241,11 @@ function HomeScreen() {
       const res = await getDreams();
       const seen = await getSeenDreamIds();
       setSeenIds(seen);
-      const unseen = res.journal.filter(d => !seen.has(d.id)).reverse();
-      const seenList = res.journal.filter(d => seen.has(d.id));
+      // Sort: latest date first within each group
+      const byDateDesc = (a: DreamEntry, b: DreamEntry) =>
+        new Date(b.date).getTime() - new Date(a.date).getTime();
+      const unseen = res.journal.filter(d => !seen.has(d.id)).sort(byDateDesc);
+      const seenList = res.journal.filter(d => seen.has(d.id)).sort(byDateDesc);
       setDreams([...unseen, ...seenList]);
     } catch {
       // silent — dreams are optional
@@ -276,6 +284,8 @@ function HomeScreen() {
         return <FilesScreen onBack={() => navigate('home')} />;
       case 'agent':
         return <AgentScreen onBack={() => navigate('home')} />;
+      case 'memory':
+        return <MemoryScreen onBack={() => navigate('home')} />;
       case 'profile':
         return <ProfileScreen onBack={() => navigate('home')} />;
       default:
@@ -316,55 +326,108 @@ function HomeScreen() {
       </View>
 
       {/* ── Dreams Stories ─────────────────────────────────────────────── */}
-      {dreams.length > 0 && (
-        <View style={{ marginBottom: 20 }}>
-          <View style={styles.storiesHeader}>
-            <Text style={[styles.sectionTitle, { color: t.text.primary, marginBottom: 0 }]}>Brain Dreams</Text>
-            {dreams.length > 5 && (
-              <TouchableOpacity onPress={() => { setDreamStartIndex(0); navigate('dreams'); }} activeOpacity={0.7}>
-                <Text style={[styles.seeAll, { color: t.primary.accent }]}>See all →</Text>
+      {dreams.length > 0 && (() => {
+        const STORY_COLORS = ['#6d28d9','#1d4ed8','#065f46','#92400e','#be185d','#b45309','#0369a1'];
+        const INITIAL_COUNT = 5;
+        const displayedDreams = showAllDreams ? dreams : dreams.slice(0, INITIAL_COUNT);
+        const hasMore = dreams.length > INITIAL_COUNT;
+        const unseenCount = dreams.filter(d => !seenIds.has(d.id)).length;
+        return (
+          <View style={{ marginBottom: 20 }}>
+            {/* Header row */}
+            <View style={styles.storiesHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={[styles.sectionTitle, { color: t.text.primary, marginBottom: 0 }]}>Brain Dreams</Text>
+                {unseenCount > 0 && (
+                  <View style={[styles.unseenBadge, { backgroundColor: t.primary.default }]}>
+                    <Text style={[styles.unseenBadgeText, { color: t.text.onPrimary }]}>{unseenCount}</Text>
+                  </View>
+                )}
+              </View>
+              <TouchableOpacity
+                onPress={() => { setDreamStartIndex(0); navigate('dreams'); }}
+                activeOpacity={0.7}>
+                <Text style={[styles.seeAll, { color: t.primary.accent }]}>Open all</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Horizontal dream cards */}
+            <FlatList
+              data={displayedDreams}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={d => d.id}
+              contentContainerStyle={{ gap: 10, paddingVertical: 8 }}
+              renderItem={({ item, index }) => {
+                const isSeen = seenIds.has(item.id);
+                // Unseen: vibrant accent color; seen: grayscale desaturated
+                const colorIdx = dreams.indexOf(item) % STORY_COLORS.length;
+                const accent = STORY_COLORS[colorIdx];
+                return (
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={async () => {
+                      await markDreamAsSeen(item.id);
+                      setSeenIds(prev => new Set([...prev, item.id]));
+                      setDreamStartIndex(dreams.indexOf(item));
+                      navigate('dreams');
+                    }}
+                    style={[
+                      styles.storyCard,
+                      isSeen
+                        ? { borderColor: isDark ? '#2a2a2a' : '#d0d0d0', borderWidth: 1, opacity: 0.55 }
+                        : { borderColor: accent, borderWidth: 2.5 },
+                    ]}>
+                    <View style={[
+                      styles.storyInner,
+                      { backgroundColor: isSeen
+                          ? (isDark ? '#1a1a1a' : '#e0e0e0')
+                          : accent + 'CC' },
+                    ]}>
+                      {/* Date label */}
+                      {!isSeen && item.date ? (
+                        <Text style={styles.storyDate} numberOfLines={1}>{item.date}</Text>
+                      ) : null}
+                      <Text
+                        style={[styles.storyTitle, {
+                          color: isSeen ? (isDark ? '#4a4a4a' : '#888888') : '#FFF',
+                        }]}
+                        numberOfLines={3}>
+                        {item.title}
+                      </Text>
+                      {!isSeen && (
+                        <View style={[styles.storyBadge, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
+                          <Text style={styles.storyBadgeText}>NEW</Text>
+                        </View>
+                      )}
+                      {isSeen && (
+                        <Text style={[styles.storySeenLabel, { color: isDark ? '#3a3a3a' : '#aaaaaa' }]}>seen</Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              }}
+            />
+
+            {/* See more / See less toggle */}
+            {hasMore && (
+              <TouchableOpacity
+                style={[styles.seeMoreBtn, { borderColor: t.border.default, backgroundColor: t.background.surface }]}
+                onPress={() => setShowAllDreams(v => !v)}
+                activeOpacity={0.75}>
+                <Text style={[styles.seeMoreTxt, { color: t.text.secondary }]}>
+                  {showAllDreams
+                    ? 'See less'
+                    : `See ${dreams.length - INITIAL_COUNT} more`}
+                </Text>
+                <Text style={[styles.seeMoreTxt, { color: t.text.secondary }]}>
+                  {showAllDreams ? '↑' : '↓'}
+                </Text>
               </TouchableOpacity>
             )}
           </View>
-          <FlatList
-            data={dreams.slice(0, 5)}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={d => d.id}
-            contentContainerStyle={{ gap: 10, paddingVertical: 8 }}
-            renderItem={({ item, index }) => {
-              const isSeen = seenIds.has(item.id);
-              const STORY_COLORS = ['#6d28d9','#1d4ed8','#065f46','#92400e','#be185d'];
-              const accent = STORY_COLORS[index % STORY_COLORS.length];
-              return (
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  onPress={async () => {
-                    await markDreamAsSeen(item.id);
-                    setSeenIds(prev => new Set([...prev, item.id]));
-                    setDreamStartIndex(index);
-                    navigate('dreams');
-                  }}
-                  style={[
-                    styles.storyCard,
-                    { borderColor: isSeen ? (isDark ? '#333' : '#CCC') : accent, borderWidth: isSeen ? 1 : 2.5 },
-                  ]}>
-                  <View style={[styles.storyInner, { backgroundColor: isSeen ? (isDark ? '#111' : '#E8E8E8') : accent + 'CC' }]}>
-                    <Text style={[styles.storyTitle, { color: isSeen ? (isDark ? '#555' : '#AAA') : '#FFF' }]} numberOfLines={3}>
-                      {item.title}
-                    </Text>
-                    {!isSeen && (
-                      <View style={[styles.storyBadge, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
-                        <Text style={styles.storyBadgeText}>NEW</Text>
-                      </View>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              );
-            }}
-          />
-        </View>
-      )}
+        );
+      })()}
 
       {/* ── Quick Actions ──────────────────────────────────────────────── */}
       <Text style={[styles.sectionTitle, { color: t.text.primary }]}>Quick Actions</Text>
@@ -493,11 +556,17 @@ const styles = StyleSheet.create({
   // Dreams stories
   storiesHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   seeAll: { fontSize: 13, fontWeight: '600' },
-  storyCard: { width: 80, height: 128, borderRadius: 14, overflow: 'hidden' },
+  storyCard: { width: 84, height: 132, borderRadius: 14, overflow: 'hidden' },
   storyInner: { flex: 1, padding: 8, justifyContent: 'flex-end' },
+  storyDate: { fontSize: 8, color: 'rgba(255,255,255,0.7)', marginBottom: 3, fontWeight: '600' },
   storyTitle: { fontSize: 10, fontWeight: '700', lineHeight: 14 },
   storyBadge: { alignSelf: 'flex-start', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2, marginTop: 4 },
   storyBadgeText: { fontSize: 8, fontWeight: '800', color: '#FFF', letterSpacing: 0.5 },
+  storySeenLabel: { fontSize: 8, fontWeight: '600', marginTop: 4, letterSpacing: 0.4 },
+  unseenBadge: { minWidth: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
+  unseenBadgeText: { fontSize: 10, fontWeight: '800' },
+  seeMoreBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 6, paddingVertical: 8, borderRadius: 10, borderWidth: 1 },
+  seeMoreTxt: { fontSize: 12, fontWeight: '600' },
 });
 
 export default HomeScreen;

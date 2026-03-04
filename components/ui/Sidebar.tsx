@@ -161,8 +161,11 @@ export default function Sidebar({
           <IconX size={18} color={t.text.primary} />
         </TouchableOpacity>
 
-        {/* User Card */}
-        <View style={[s.userCard, { backgroundColor: t.primary.default + '10', borderColor: t.primary.default + '30' }]}>
+        {/* User Card — tappable to open profile */}
+        <TouchableOpacity
+          style={[s.userCard, { backgroundColor: t.primary.default + '10', borderColor: t.primary.default + '30' }]}
+          onPress={() => { onNavigate('profile'); onClose(); }}
+          activeOpacity={0.8}>
           <View style={[s.avatar, { backgroundColor: t.primary.default + '25', borderColor: t.primary.default }]}>
             <Text style={[s.avatarText, { color: t.primary.accent }]}>{avatarLetters}</Text>
           </View>
@@ -174,7 +177,7 @@ export default function Sidebar({
               <Text style={[s.planText, { color: t.primary.accent }]}>{plan}</Text>
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
 
         {/* Divider */}
         <View style={[s.divider, { backgroundColor: t.border.subtle }]} />

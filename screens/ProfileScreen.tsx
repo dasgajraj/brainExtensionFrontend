@@ -72,8 +72,8 @@ function InfoRow({
       ? '—'
       : typeof value === 'boolean'
       ? value
-        ? 'Yes ✓'
-        : 'No ✗'
+        ? 'Yes'
+        : 'No'
       : String(value) || '—';
 
   const valueColor =

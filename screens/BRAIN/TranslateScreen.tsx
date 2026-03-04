@@ -23,6 +23,7 @@ import {
   TranslateHistoryItem,
 } from '../../services/translateHistory.service';
 import { MarkdownText } from '../../utils/markdownRenderer';
+import { IconAlertTriangle } from '../../components/ui/Icons';
 
 type T = ReturnType<typeof getTokens>;
 
@@ -294,8 +295,9 @@ export default function TranslateScreen({ onBack }: TranslateScreenProps) {
 
         {/* ── Error ── */}
         {errorMsg !== '' && (
-          <View style={[styles.errorBox, { backgroundColor: t.status.errorSubtle, borderColor: t.status.error }]}>
-            <Text style={[styles.errorText, { color: t.status.error }]}>⚠  {errorMsg}</Text>
+          <View style={[styles.errorBox, { backgroundColor: t.status.errorSubtle, borderColor: t.status.error, flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
+            <IconAlertTriangle size={16} color={t.status.error} />
+            <Text style={[styles.errorText, { color: t.status.error, flex: 1 }]}>{errorMsg}</Text>
           </View>
         )}
 

@@ -2,7 +2,7 @@
  * components/ui/BottomNavBar.tsx
  *
  * Material 3 NavigationBar — 5 tabs.
- * Tabs: Home · Brain · Agent (elevated FAB center) · Files · Profile
+ * Tabs: Home · Brain · Agent (elevated FAB center) · Files · Memory
  *
  * Active indicator: pill-shaped background behind icon (Material 3 style).
  * No dot below label. Agent tab is a circular elevated FAB.
@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppTokens } from '../../theme/tokens';
-import { IconHome, IconBrain, IconFolder, IconBot, IconUser } from './Icons';
+import { IconHome, IconBrain, IconFolder, IconBot, IconMemory } from './Icons';
 
 interface Tab {
   key: string;
@@ -33,7 +33,7 @@ const TABS: Tab[] = [
   { key: 'brainAsk', label: 'Brain',   icon: IconBrain  },
   { key: 'agent',    label: 'Agent',   icon: IconBot,   isCenter: true },
   { key: 'files',    label: 'Files',   icon: IconFolder },
-  { key: 'profile',  label: 'Profile', icon: IconUser   },
+  { key: 'memory',   label: 'Memory',  icon: IconMemory },
 ];
 
 interface BottomNavBarProps {
@@ -86,8 +86,8 @@ export default function BottomNavBar({ activeTab, onTabPress, t }: BottomNavBarP
 
         /* ── Elevated center FAB (Agent) ── */
         if (tab.isCenter) {
-          const fabBg        = active ? (isDark ? '#FFFFFF' : '#000000') : (isDark ? '#1C1C1C' : '#EBEBEB');
-          const fabIconColor = active ? (isDark ? '#000000' : '#FFFFFF') : INACTIVE_COL;
+          const fabBg        = active ? (isDark ? '#FFFFFF' : '#ffffff') : (isDark ? '#ffffff' : '#EBEBEB');
+          const fabIconColor = active ? (isDark ? '#000000' : '#000000') : '#000000';
           return (
             <View key={tab.key} style={s.centerWrap}>
               <Animated.View style={{ transform: [{ scale: scaleAnims[index] }] }}>

@@ -23,6 +23,7 @@ import {
   BrainHistoryItem,
 } from '../../services/brainHistory.service';
 import { MarkdownText } from '../../utils/markdownRenderer';
+import { IconX, IconBrain } from '../../components/ui/Icons';
 
 type T = ReturnType<typeof getTokens>;
 
@@ -230,7 +231,7 @@ function HistoryRow({
         onPress={onDelete}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         activeOpacity={0.7}>
-        <Text style={[histStyles.deleteIcon, { color: t.status.error }]}>✕</Text>
+        <IconX size={14} color={t.status.error} />
       </TouchableOpacity>
     </TouchableOpacity>
   );
@@ -532,7 +533,7 @@ export default function BrainResultScreen({ onBack, prefillId }: BrainResultScre
               ) : null}
               <View style={[styles.contextChip, { backgroundColor: t.primary.default + '18', borderColor: t.primary.default + '50' }]}>
                 <Text style={[styles.contextChipLabel, { color: t.text.muted }]}>lobe</Text>
-                <Text style={[styles.contextChipValue, { color: t.primary.accent }]}>🧠 {result.selectedLobe}</Text>
+                <Text style={[styles.contextChipValue, { color: t.primary.accent }]}>{result.selectedLobe}</Text>
               </View>
             </View>
 

@@ -16,6 +16,10 @@ import { getTokens } from '../../theme/tokens';
 import {
   listFiles, uploadFile, getFile, deleteFile, BrainFile,
 } from '../../api/files.api';
+import {
+  IconX, IconAlertTriangle, IconImage, IconFileText, IconActivity,
+  IconPlay, IconTerminal, IconPackage, IconFolder,
+} from '../../components/ui/Icons';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -58,9 +62,14 @@ const ACCENT_MAP: Record<MimeCategory, string> = {
   video: '#8b5cf6', code: '#10b981', doc: '#3b82f6', other: '#6b7280',
 };
 
-const MIME_ICON: Record<MimeCategory, string> = {
-  image: '🖼️', pdf: '📄', audio: '🎵',
-  video: '🎬', code: '💻', doc: '📝', other: '📦',
+const MIME_ICON: Record<MimeCategory, React.ComponentType<{ size?: number; color: string }>> = {
+  image: IconImage,
+  pdf: IconFileText,
+  audio: IconActivity,
+  video: IconPlay,
+  code: IconTerminal,
+  doc: IconFileText,
+  other: IconPackage,
 };
 
 function statusColor(status: string, t: T): string {
@@ -101,7 +110,7 @@ function ImageViewer({ url, name, visible, onClose }: {
         <View style={ivSt.header}>
           <Text style={ivSt.name} numberOfLines={1}>{name}</Text>
           <TouchableOpacity style={ivSt.closeBtn} onPress={onClose} activeOpacity={0.8}>
-            <Text style={ivSt.closeIcon}>✕</Text>
+            <IconX size={18} color='#fff' />
           </TouchableOpacity>
         </View>
         <ScrollView
@@ -235,6 +244,7 @@ function FileCard({ file, t, onPress, onDelete, onQuickOpen }: FileCardProps) {
   const cat = mimeCategory(file.mimeType);
   const accent = ACCENT_MAP[cat];
   const isImage = cat === 'image';
+  const MimeIcon = MIME_ICON[cat];
   const canView = ['image', 'pdf', 'code', 'doc'].includes(cat);
 
   return (
@@ -248,7 +258,7 @@ function FileCard({ file, t, onPress, onDelete, onQuickOpen }: FileCardProps) {
         {isImage && file.url ? (
           <Image source={{ uri: file.url }} style={fcSt.thumb} resizeMode="cover" />
         ) : (
-          <Text style={fcSt.iconText}>{MIME_ICON[cat]}</Text>
+          <MimeIcon size={20} color={accent} />
         )}
       </View>
 
@@ -288,7 +298,7 @@ function FileCard({ file, t, onPress, onDelete, onQuickOpen }: FileCardProps) {
           onPress={onDelete}
           hitSlop={{ top: 8, bottom: 8, left: 4, right: 6 }}
           activeOpacity={0.75}>
-          <Text style={[fcSt.actionIcon, { color: t.status.error }]}>✕</Text>
+          <IconX size={14} color={t.status.error} />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -362,6 +372,7 @@ function FileDetailSheet({ file, visible, onClose, onDelete, onOpenView, t }: De
   const cat = mimeCategory(d.mimeType);
   const accent = ACCENT_MAP[cat];
   const isImage = cat === 'image';
+  const MimeIcon = MIME_ICON[cat];
   const canView = ['image', 'pdf', 'code', 'doc'].includes(cat);
   const viewLabel = cat === 'image' ? 'View Image  ▶'
     : cat === 'pdf' ? 'View PDF  ▶'
@@ -392,7 +403,7 @@ function FileDetailSheet({ file, visible, onClose, onDelete, onOpenView, t }: De
                 </View>
               </TouchableOpacity>
             ) : (
-              <Text style={dsSt.heroIcon}>{MIME_ICON[cat]}</Text>
+              <MimeIcon size={40} color={accent} />
             )}
             {loading && <ActivityIndicator style={dsSt.heroLoader} color={accent} size="small" />}
           </View>
@@ -636,7 +647,7 @@ export default function FilesScreen({ onBack }: FilesScreenProps) {
   const openUploadPicker = () => {
     Alert.alert('Upload File', 'Choose source', [
       {
-        text: '📷  Gallery (Images & Videos)',
+        text: 'Gallery (Images & Videos)',
         onPress: () => launchImageLibrary(
           { mediaType: 'mixed', includeBase64: false, quality: 0.9 },
           (res) => {
@@ -649,7 +660,7 @@ export default function FilesScreen({ onBack }: FilesScreenProps) {
         ),
       },
       {
-        text: '📁  Files (PDF, Code, Docs…)',
+        text: 'Files (PDF, Code, Docs…)',
         onPress: async () => {
           try {
             const result = await DocumentPicker.pickSingle({
@@ -742,7 +753,7 @@ export default function FilesScreen({ onBack }: FilesScreenProps) {
           />
           {search.length > 0 && (
             <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={[ss.searchClear, { color: t.text.muted }]}>✕</Text>
+              <IconX size={14} color={t.text.muted} />
             </TouchableOpacity>
           )}
         </View>
@@ -774,7 +785,8 @@ export default function FilesScreen({ onBack }: FilesScreenProps) {
         {/* ── Error banner ── */}
         {errorMsg !== '' && (
           <View style={[ss.errorBanner, { backgroundColor: t.status.errorSubtle, borderColor: t.status.error }]}>
-            <Text style={[ss.errorTxt, { color: t.status.error }]}>⚠  {errorMsg}</Text>
+            <IconAlertTriangle size={16} color={t.status.error} />
+            <Text style={[ss.errorTxt, { color: t.status.error, flex: 1 }]}>{errorMsg}</Text>
             <TouchableOpacity onPress={() => { setErrorMsg(''); fetchFiles(); }}>
               <Text style={[ss.retryTxt, { color: t.primary.accent }]}>Retry</Text>
             </TouchableOpacity>
@@ -820,7 +832,7 @@ export default function FilesScreen({ onBack }: FilesScreenProps) {
             {/* Empty state */}
             {filtered.length === 0 && !loading && (
               <View style={ss.emptyState}>
-                <Text style={ss.emptyIcon}>📂</Text>
+                <IconFolder size={56} color={t.text.muted} />
                 <Text style={[ss.emptyTitle, { color: t.text.primary }]}>
                   {files.length === 0 ? 'No files yet' : 'No matches'}
                 </Text>

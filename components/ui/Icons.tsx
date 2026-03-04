@@ -277,3 +277,129 @@ export function IconActivity({ size = 22, color }: IconProps) {
     </Svg>
   );
 }
+
+/* ── New icons ───────────────────────────────────────────────────────────── */
+
+export function IconMemory({ size = 22, color }: IconProps) {
+  // Database / memory cylinder
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M12 2C7.58 2 4 3.79 4 6v12c0 2.21 3.58 4 8 4s8-1.79 8-4V6c0-2.21-3.58-4-8-4z" stroke={color} {...SP} />
+      <Path d="M20 6c0 2.21-3.58 4-8 4S4 8.21 4 6" stroke={color} {...SP} />
+      <Path d="M20 12c0 2.21-3.58 4-8 4s-8-1.79-8-4" stroke={color} {...SP} />
+    </Svg>
+  );
+}
+
+export function IconSearch({ size = 22, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Circle cx="11" cy="11" r="8" stroke={color} {...SP} />
+      <Line x1="21" y1="21" x2="16.65" y2="16.65" stroke={color} {...SP} />
+    </Svg>
+  );
+}
+
+export function IconAlertTriangle({ size = 22, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke={color} {...SP} />
+      <Line x1="12" y1="9" x2="12" y2="13" stroke={color} {...SP} />
+      <Line x1="12" y1="17" x2="12.01" y2="17" stroke={color} {...SP} />
+    </Svg>
+  );
+}
+
+export function IconVolume({ size = 22, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Polyline points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" stroke={color} {...SP} />
+      <Path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" stroke={color} {...SP} />
+    </Svg>
+  );
+}
+
+export function IconVolumeOff({ size = 22, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Polyline points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" stroke={color} {...SP} />
+      <Line x1="23" y1="9" x2="17" y2="15" stroke={color} {...SP} />
+      <Line x1="17" y1="9" x2="23" y2="15" stroke={color} {...SP} />
+    </Svg>
+  );
+}
+
+export function IconPlus({ size = 22, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Line x1="12" y1="5" x2="12" y2="19" stroke={color} {...SP} />
+      <Line x1="5" y1="12" x2="19" y2="12" stroke={color} {...SP} />
+    </Svg>
+  );
+}
+
+export function IconImage({ size = 22, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke={color} {...SP} />
+      <Circle cx="8.5" cy="8.5" r="1.5" stroke={color} {...SP} />
+      <Polyline points="21 15 16 10 5 21" stroke={color} {...SP} />
+    </Svg>
+  );
+}
+
+export function IconFileText({ size = 22, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke={color} {...SP} />
+      <Polyline points="14 2 14 8 20 8" stroke={color} {...SP} />
+      <Line x1="16" y1="13" x2="8" y2="13" stroke={color} {...SP} />
+      <Line x1="16" y1="17" x2="8" y2="17" stroke={color} {...SP} />
+      <Polyline points="10 9 9 9 8 9" stroke={color} {...SP} />
+    </Svg>
+  );
+}
+
+export function IconPlay({ size = 22, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Polyline points="5 3 19 12 5 21 5 3" stroke={color} {...SP} />
+    </Svg>
+  );
+}
+
+export function IconPackage({ size = 22, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M12.89 1.45l8 4A2 2 0 0122 7.24v9.53a2 2 0 01-1.11 1.79l-8 4a2 2 0 01-1.79 0l-8-4A2 2 0 012 16.76V7.24a2 2 0 011.11-1.79l8-4a2 2 0 011.78 0z" stroke={color} {...SP} />
+      <Polyline points="2.32 6.16 12 11 21.68 6.16" stroke={color} {...SP} />
+      <Line x1="12" y1="22.76" x2="12" y2="11" stroke={color} {...SP} />
+    </Svg>
+  );
+}
+
+export function IconTrash({ size = 22, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Polyline points="3 6 5 6 21 6" stroke={color} {...SP} />
+      <Path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2" stroke={color} {...SP} />
+    </Svg>
+  );
+}
+
+export function IconBookOpen({ size = 22, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z" stroke={color} {...SP} />
+      <Path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z" stroke={color} {...SP} />
+    </Svg>
+  );
+}
+
+export function IconSparkle({ size = 22, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z" stroke={color} {...SP} />
+    </Svg>
+  );
+}

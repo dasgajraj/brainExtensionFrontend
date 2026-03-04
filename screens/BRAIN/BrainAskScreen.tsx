@@ -22,11 +22,18 @@ import {
 } from '../../api/brain.api';
 import { addToHistory } from '../../services/brainHistory.service';
 import { MarkdownText } from '../../utils/markdownRenderer';
+import {
+  IconSettings, IconBookOpen, IconSparkle, IconAlertTriangle,
+} from '../../components/ui/Icons';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const LANGUAGES = ['English', 'Hindi', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi', 'Gujarati'];
 const MODES = ['default', 'study', 'creative'];
-const MODE_ICONS: Record<string, string> = { default: '⚙️', study: '📚', creative: '✨' };
+const MODE_ICONS: Record<string, React.ComponentType<{ size?: number; color: string }>> = {
+  default: IconSettings,
+  study: IconBookOpen,
+  creative: IconSparkle,
+};
 const POLL_INTERVAL_MS = 15_000; // 15 s — prevents hammering Gemini
 const MAX_POLLS = 8;             // 8 × 15 s = 2 min max
 
@@ -302,6 +309,7 @@ export default function BrainAskScreen({ onBack }: BrainAskScreenProps) {
         <View style={styles.pillRow}>
           {MODES.map(m => {
             const selected = mode === m;
+            const MIcon = MODE_ICONS[m];
             return (
               <TouchableOpacity
                 key={m}
@@ -311,7 +319,7 @@ export default function BrainAskScreen({ onBack }: BrainAskScreenProps) {
                 }]}
                 onPress={() => step === 'form' && setMode(m)}
                 activeOpacity={0.8}>
-                <Text style={styles.pillIcon}>{MODE_ICONS[m]}</Text>
+                <MIcon size={15} color={selected ? t.text.onPrimary : t.text.secondary} />
                 <Text style={[styles.pillText, { color: selected ? t.text.onPrimary : t.text.secondary }]}>
                   {m.charAt(0).toUpperCase() + m.slice(1)}
                 </Text>
@@ -349,7 +357,7 @@ export default function BrainAskScreen({ onBack }: BrainAskScreenProps) {
             {isAsking ? (
               <ActivityIndicator color={t.text.onPrimary} />
             ) : (
-              <Text style={[styles.primaryBtnText, { color: t.text.onPrimary }]}>🧠  Ask Brain</Text>
+              <Text style={[styles.primaryBtnText, { color: t.text.onPrimary }]}>Ask Brain</Text>
             )}
           </TouchableOpacity>
         )}
@@ -418,7 +426,7 @@ export default function BrainAskScreen({ onBack }: BrainAskScreenProps) {
                   borderColor: result.status === 'done' ? t.status.success : t.status.error,
                 }]}>
                   <Text style={{ color: result.status === 'done' ? t.status.success : t.status.error, fontSize: 12, fontWeight: '700' }}>
-                    {result.status === 'done' ? '✓ Done' : '✗ Failed'}
+                    {result.status === 'done' ? 'Done' : 'Failed'}
                   </Text>
                 </View>
                 <Text style={[styles.timestampText, { color: t.text.muted }]}>
@@ -472,8 +480,9 @@ export default function BrainAskScreen({ onBack }: BrainAskScreenProps) {
 
         {/* ═══ ERROR STATE ═══ */}
         {step === 'error' && !result && (
-          <View style={[styles.errorBox, { backgroundColor: t.status.errorSubtle, borderColor: t.status.error, marginTop: 16 }]}>
-            <Text style={[styles.errorText, { color: t.status.error }]}>⚠  {errorMsg}</Text>
+          <View style={[styles.errorBox, { backgroundColor: t.status.errorSubtle, borderColor: t.status.error, marginTop: 16, flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
+            <IconAlertTriangle size={16} color={t.status.error} />
+            <Text style={[styles.errorText, { color: t.status.error, flex: 1 }]}>{errorMsg}</Text>
           </View>
         )}
 

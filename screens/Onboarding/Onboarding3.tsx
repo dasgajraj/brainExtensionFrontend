@@ -222,7 +222,7 @@ const Onboarding3: React.FC<Onboarding3Props> = ({ onGetStarted, theme = 'dark' 
             onPress={onGetStarted}
             activeOpacity={0.85}
           >
-            <Text style={styles.startButtonText}>Get Started</Text>
+            <Text style={[styles.startButtonText, { color: isDark ? '#000' : '#fff' }]}>Get Started</Text>
           </TouchableOpacity>
         </Animated.View>
       </Animated.View>

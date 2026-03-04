@@ -266,7 +266,7 @@ const Onboarding2: React.FC<Onboarding2Props> = ({ onNext, onSkip, theme = 'dark
           onPress={onNext}
           activeOpacity={0.8}
         >
-          <Text style={styles.nextIcon}>Next</Text>
+          <Text style={[styles.nextIcon, { color: isDark ? '#000' : '#fff' }]}>Next</Text>
         </TouchableOpacity>
       </Animated.View>
     </LinearGradient>
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(150, 150, 150, 0.3)',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },

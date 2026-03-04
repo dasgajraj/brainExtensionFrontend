@@ -121,7 +121,7 @@ const AuthInput: React.FC<AuthInputProps> = ({
             backgroundColor: containerBg,
             borderRadius: t.shape.input,
             borderColor,
-            borderWidth: 1.5,
+            borderWidth: StyleSheet.hairlineWidth,
             paddingHorizontal: t.spacing.md,
           },
         ]}

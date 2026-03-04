@@ -145,10 +145,14 @@ function MemoryCard({ item, onDelete, onPress, t, score }: CardProps) {
 
 const mcSt = StyleSheet.create({
   card: {
-    borderRadius: 16,
-    borderWidth: 1,
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
     padding: 16,
     marginBottom: 12,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4 },
+      android: { elevation: 1 },
+    }),
   },
   topRow: {
     flexDirection: 'row',
@@ -276,9 +280,9 @@ const mdSt = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderWidth: 1,
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+    borderWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: 0,
     padding: 24,
     paddingBottom: 40,
@@ -650,9 +654,13 @@ const s = StyleSheet.create({
   headerBtn: {
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3 },
+      android: { elevation: 1 },
+    }),
   },
   headerCenter: {
     flex: 1,
@@ -665,7 +673,7 @@ const s = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    letterSpacing: 0.2,
+    letterSpacing: -0.3,
   },
   headerActions: {
     flexDirection: 'row',
@@ -677,8 +685,8 @@ const s = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
-    borderWidth: 1,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 12,
     gap: 8,
     marginVertical: 6,
@@ -692,8 +700,8 @@ const s = StyleSheet.create({
   addBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
-    borderWidth: 1,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 12,
     paddingVertical: 8,
     gap: 8,
@@ -718,8 +726,8 @@ const s = StyleSheet.create({
     marginHorizontal: 16,
     marginVertical: 8,
     padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
     gap: 8,
   },
   errorText: {

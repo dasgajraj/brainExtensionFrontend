@@ -398,7 +398,7 @@ const sheetSt = StyleSheet.create({
   previewTxt: { fontSize: 13, lineHeight: 20 },
 });
 
-/* ── Force Graph Canvas ──────────────────────────────────────────────── */
+/* ── Force Graph Canvas — Blueprint / Architectural Style ─────────── */
 function ForceGraph({ simNodes, links, selectedId, onNodeTap, onBgTap, isDark }: {
   simNodes: SimNode[];
   links: GraphLink[];
@@ -415,6 +415,15 @@ function ForceGraph({ simNodes, links, selectedId, onNodeTap, onBgTap, isDark }:
   const lastPanPos = useRef<{ x: number; y: number } | null>(null);
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
+
+  // Blueprint grid colors
+  const gridColor = isDark ? 'rgba(100,120,180,0.06)' : 'rgba(80,100,160,0.05)';
+  const gridMajor = isDark ? 'rgba(100,120,180,0.12)' : 'rgba(80,100,160,0.09)';
+
+  // Node card dimensions — blueprint style
+  const NODE_W = 110;
+  const NODE_H = 44;
+  const NODE_HEADER_H = 16;
 
   function pDist(touches: any[]): number {
     const dx = touches[1].pageX - touches[0].pageX;
@@ -475,8 +484,13 @@ function ForceGraph({ simNodes, links, selectedId, onNodeTap, onBgTap, isDark }:
           let hit: SimNode | null = null;
           let best = 999;
           simNodes.forEach(n => {
-            const d = Math.sqrt((n.x - gx) ** 2 + (n.y - gy) ** 2);
-            if (d < n.radius + 20 && d < best) { best = d; hit = n; }
+            // Hit test against rectangular node card
+            const hw = NODE_W / 2 + 12;
+            const hh = NODE_H / 2 + 12;
+            if (Math.abs(n.x - gx) < hw && Math.abs(n.y - gy) < hh) {
+              const d = Math.sqrt((n.x - gx) ** 2 + (n.y - gy) ** 2);
+              if (d < best) { best = d; hit = n; }
+            }
           });
           if (hit) onNodeTap(hit); else onBgTap();
         }
@@ -517,12 +531,37 @@ function ForceGraph({ simNodes, links, selectedId, onNodeTap, onBgTap, isDark }:
     return Array.from(edgeMap.values());
   }, [links]);
 
+  // Generate grid lines
+  const gridLines = useMemo(() => {
+    const lines: React.ReactNode[] = [];
+    const step = 40;
+    const majorStep = step * 4;
+    for (let x = 0; x <= GRAPH_W + 200; x += step) {
+      const isMajor = x % majorStep === 0;
+      lines.push(
+        <Line key={`gx-${x}`} x1={x} y1={-200} x2={x} y2={GRAPH_H + 200}
+          stroke={isMajor ? gridMajor : gridColor} strokeWidth={isMajor ? 0.8 : 0.4} />,
+      );
+    }
+    for (let y = 0; y <= GRAPH_H + 200; y += step) {
+      const isMajor = y % majorStep === 0;
+      lines.push(
+        <Line key={`gy-${y}`} x1={-200} y1={y} x2={GRAPH_W + 200} y2={y}
+          stroke={isMajor ? gridMajor : gridColor} strokeWidth={isMajor ? 0.8 : 0.4} />,
+      );
+    }
+    return lines;
+  }, [gridColor, gridMajor]);
+
   return (
     <View style={{ flex: 1, overflow: 'hidden' }} {...panResponder.panHandlers}>
       <Svg width={GRAPH_W} height={GRAPH_H}>
         <G transform={`translate(${transform.x}, ${transform.y}) scale(${transform.scale})`}>
 
-          {/* ── Edges (curved colored lines) ── */}
+          {/* ── Blueprint grid ── */}
+          {gridLines}
+
+          {/* ── Edges (straight structural lines with endpoint dots) ── */}
           {renderEdges.map((edge, i) => {
             const src = simNodes.find(n => n.id === edge.src);
             const tgt = simNodes.find(n => n.id === edge.tgt);
@@ -532,43 +571,64 @@ function ForceGraph({ simNodes, links, selectedId, onNodeTap, onBgTap, isDark }:
               edge.src === selectedId || edge.tgt === selectedId;
             const normStr = edge.totalStr / maxStr;
             const strokeW = isConnected
-              ? 1 + normStr * 2.5
+              ? 1.2 + normStr * 2
               : 0.5;
-            const opacity = isConnected ? 0.4 + normStr * 0.5 : 0.08;
+            const opacity = isConnected ? 0.5 + normStr * 0.4 : 0.06;
             const color = edgePalette[i % edgePalette.length];
-            const dimColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+            const dimColor = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)';
 
-            // Curve offset based on index for visual variety
-            const curveAmt = 15 + (i % 4) * 8;
-            const curveDir = i % 2 === 0 ? 1 : -1;
-            const offset = curveAmt * curveDir;
+            // Calculate connection points — edge of the rectangular cards
+            const dx = tgt.x - src.x;
+            const dy = tgt.y - src.y;
+            const angle = Math.atan2(dy, dx);
+            // Source exit point (edge of rect)
+            const srcEx = Math.abs(Math.cos(angle)) * NODE_W / 2 > Math.abs(Math.sin(angle)) * NODE_H / 2
+              ? { x: src.x + Math.sign(Math.cos(angle)) * NODE_W / 2, y: src.y + (Math.sign(Math.cos(angle)) * NODE_W / 2) * Math.tan(angle) }
+              : { x: src.x + (Math.sign(Math.sin(angle)) * NODE_H / 2) / Math.tan(angle), y: src.y + Math.sign(Math.sin(angle)) * NODE_H / 2 };
+            // Target entry point (edge of rect)
+            const tgtEx = Math.abs(Math.cos(angle)) * NODE_W / 2 > Math.abs(Math.sin(angle)) * NODE_H / 2
+              ? { x: tgt.x - Math.sign(Math.cos(angle)) * NODE_W / 2, y: tgt.y - (Math.sign(Math.cos(angle)) * NODE_W / 2) * Math.tan(angle) }
+              : { x: tgt.x - (Math.sign(Math.sin(angle)) * NODE_H / 2) / Math.tan(angle), y: tgt.y - Math.sign(Math.sin(angle)) * NODE_H / 2 };
 
-            const pathD = curvedEdgePath(src.x, src.y, tgt.x, tgt.y, offset);
-            const mid = bezierMidpoint(src.x, src.y, tgt.x, tgt.y, offset);
+            const midX = (srcEx.x + tgtEx.x) / 2;
+            const midY = (srcEx.y + tgtEx.y) / 2;
 
             return (
               <G key={`edge-${i}`}>
-                <Path
-                  d={pathD}
+                {/* Main connector line */}
+                <Line
+                  x1={srcEx.x} y1={srcEx.y}
+                  x2={tgtEx.x} y2={tgtEx.y}
                   stroke={isConnected ? color : dimColor}
                   strokeWidth={strokeW}
                   strokeOpacity={opacity}
-                  fill="none"
                   strokeLinecap="round"
                 />
+                {/* Connection dots at endpoints */}
+                {isConnected && (
+                  <>
+                    <Circle cx={srcEx.x} cy={srcEx.y} r={2.5}
+                      fill={color} fillOpacity={opacity} />
+                    <Circle cx={tgtEx.x} cy={tgtEx.y} r={2.5}
+                      fill={color} fillOpacity={opacity} />
+                  </>
+                )}
                 {/* Strength label on edge */}
                 {isConnected && edge.totalStr > 2 && (
                   <>
                     <Rect
-                      x={mid.x - 10} y={mid.y - 7}
-                      width={20} height={14}
+                      x={midX - 12} y={midY - 8}
+                      width={24} height={16}
                       rx={4}
-                      fill={isDark ? 'rgba(10,10,15,0.85)' : 'rgba(255,255,255,0.9)'}
+                      fill={isDark ? 'rgba(10,10,20,0.92)' : 'rgba(255,255,255,0.95)'}
+                      stroke={isConnected ? color : 'transparent'}
+                      strokeWidth={0.5}
+                      strokeOpacity={0.4}
                     />
                     <SvgText
-                      x={mid.x} y={mid.y + 3.5}
+                      x={midX} y={midY + 4}
                       textAnchor="middle"
-                      fontSize={7.5}
+                      fontSize={8}
                       fontWeight="700"
                       fill={isConnected ? color : (isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)')}
                     >
@@ -580,74 +640,101 @@ function ForceGraph({ simNodes, links, selectedId, onNodeTap, onBgTap, isDark }:
             );
           })}
 
-          {/* ── Nodes (large colored circles with type letter) ── */}
+          {/* ── Nodes (rectangular blueprint cards) ── */}
           {simNodes.map(node => {
             const nodeType = node.type === 'memory' ? 'memory' : node.type === 'file' ? 'file' : 'answer';
             const colors = nc[nodeType];
             const isSelected = node.id === selectedId;
             const isDimmed = selectedId != null && !(connectedIds?.has(node.id));
-            const r = node.radius;
 
-            // Type letter inside node
-            const typeLetter = nodeType === 'memory' ? 'M' : nodeType === 'file' ? 'F' : 'A';
+            const typeLabel = nodeType === 'memory' ? 'MEM' : nodeType === 'file' ? 'FILE' : 'ANS';
+            const x = node.x - NODE_W / 2;
+            const y = node.y - NODE_H / 2;
+
+            const cardBg = isDimmed
+              ? (isDark ? 'rgba(20,20,30,0.4)' : 'rgba(240,240,250,0.5)')
+              : (isDark ? 'rgba(15,15,25,0.92)' : 'rgba(255,255,255,0.96)');
+            const borderClr = isDimmed
+              ? (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)')
+              : (isSelected ? colors.fill : (isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'));
 
             return (
               <G key={node.id}>
-                {/* Selection outer glow */}
+                {/* Selection highlight glow */}
                 {isSelected && (
-                  <>
-                    <Circle cx={node.x} cy={node.y} r={r + 14}
-                      fill={colors.fill} fillOpacity={0.06} />
-                    <Circle cx={node.x} cy={node.y} r={r + 8}
-                      fill="none" stroke={colors.fill} strokeWidth={1.5}
-                      strokeOpacity={0.3} strokeDasharray="4,3" />
-                  </>
-                )}
-
-                {/* Outer ring */}
-                <Circle cx={node.x} cy={node.y} r={r + 2}
-                  fill="none"
-                  stroke={isDimmed ? (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)') : colors.ring}
-                  strokeWidth={isDimmed ? 0.5 : 1.5}
-                  strokeOpacity={isDimmed ? 0.3 : 0.6}
-                />
-
-                {/* Main filled circle */}
-                <Circle cx={node.x} cy={node.y} r={r}
-                  fill={isDimmed ? (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)') : colors.fill}
-                  fillOpacity={isDimmed ? 0.5 : 0.92}
-                />
-
-                {/* Highlight arc (top) for 3D feel */}
-                {!isDimmed && (
-                  <Circle cx={node.x} cy={node.y - r * 0.2} r={r * 0.55}
-                    fill="white" fillOpacity={0.12}
+                  <Rect
+                    x={x - 4} y={y - 4}
+                    width={NODE_W + 8} height={NODE_H + 8}
+                    rx={8}
+                    fill="none" stroke={colors.fill}
+                    strokeWidth={1.5} strokeOpacity={0.3}
+                    strokeDasharray="4,3"
                   />
                 )}
 
-                {/* Type letter */}
+                {/* Card body */}
+                <Rect
+                  x={x} y={y}
+                  width={NODE_W} height={NODE_H}
+                  rx={6}
+                  fill={cardBg}
+                  stroke={borderClr}
+                  strokeWidth={isSelected ? 1.5 : 0.8}
+                />
+
+                {/* Header bar (colored stripe at top) */}
+                <Rect
+                  x={x} y={y}
+                  width={NODE_W} height={NODE_HEADER_H}
+                  rx={6}
+                  fill={isDimmed ? (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)') : colors.fill}
+                  fillOpacity={isDimmed ? 0.3 : 0.85}
+                />
+                {/* Bottom half of header (square corners overlap) */}
+                <Rect
+                  x={x} y={y + 6}
+                  width={NODE_W} height={NODE_HEADER_H - 6}
+                  fill={isDimmed ? (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)') : colors.fill}
+                  fillOpacity={isDimmed ? 0.3 : 0.85}
+                />
+
+                {/* Type label in header */}
                 <SvgText
-                  x={node.x} y={node.y + (r * 0.32)}
-                  textAnchor="middle"
-                  fontSize={r * 0.7}
+                  x={x + 8} y={y + NODE_HEADER_H - 4}
+                  fontSize={7.5}
                   fontWeight="800"
-                  fill={isDimmed ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)') : colors.text}
-                  letterSpacing={0.5}
+                  letterSpacing={1}
+                  fill={isDimmed
+                    ? (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)')
+                    : colors.text}
                 >
-                  {typeLetter}
+                  {typeLabel}
                 </SvgText>
 
-                {/* Node label below */}
+                {/* Connection count badge in header */}
                 <SvgText
-                  x={node.x} y={node.y + r + 15}
+                  x={x + NODE_W - 8} y={y + NODE_HEADER_H - 4}
+                  textAnchor="end"
+                  fontSize={7}
+                  fontWeight="700"
+                  fill={isDimmed
+                    ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)')
+                    : (isDark ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.8)')}
+                >
+                  w:{node.val}
+                </SvgText>
+
+                {/* Node label in body area */}
+                <SvgText
+                  x={x + NODE_W / 2} y={y + NODE_HEADER_H + (NODE_H - NODE_HEADER_H) / 2 + 4}
                   textAnchor="middle"
                   fontSize={9}
                   fontWeight="600"
                   fill={isDimmed
-                    ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)')
+                    ? (isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)')
                     : colors.label}
                 >
-                  {truncLabel(node.label, 20)}
+                  {truncLabel(node.label, 16)}
                 </SvgText>
               </G>
             );
@@ -666,14 +753,15 @@ function GraphLegend({ memCount, fileCount, linkCount, isDark, t }: {
   return (
     <View style={[lgSt.wrap, { backgroundColor: (isDark ? 'rgba(10,10,15,0.9)' : 'rgba(255,255,255,0.92)'), borderColor: t.border.subtle }]}>
       {[
-        { color: nc.memory.fill, letter: 'M', label: `${memCount} memories` },
-        { color: nc.file.fill, letter: 'F', label: `${fileCount} files` },
+        { color: nc.memory.fill, letter: 'MEM', label: `${memCount} memories` },
+        { color: nc.file.fill, letter: 'FILE', label: `${fileCount} files` },
         { color: isDark ? 'rgba(196,181,253,0.5)' : 'rgba(124,58,237,0.4)', letter: null, label: `${linkCount} links` },
       ].map((item, i) => (
         <View key={i} style={lgSt.item}>
           {item.letter ? (
-            <View style={[lgSt.legendCircle, { backgroundColor: item.color }]}>
-              <Text style={lgSt.legendLetter}>{item.letter}</Text>
+            <View style={[lgSt.legendRect, { backgroundColor: isDark ? 'rgba(15,15,25,0.9)' : '#fff', borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)' }]}>
+              <View style={[lgSt.legendRectHeader, { backgroundColor: item.color }]} />
+              <Text style={lgSt.legendRectLetter}>{item.letter[0]}</Text>
             </View>
           ) : (
             <View style={[lgSt.legendLine, { backgroundColor: item.color }]} />
@@ -690,8 +778,9 @@ const lgSt = StyleSheet.create({
     borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingVertical: 9,
   },
   item: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  legendCircle: { width: 16, height: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  legendLetter: { fontSize: 8, fontWeight: '800', color: '#fff' },
+  legendRect: { width: 20, height: 16, borderRadius: 3, borderWidth: 0.6, overflow: 'hidden', alignItems: 'center', justifyContent: 'flex-end' },
+  legendRectHeader: { position: 'absolute', top: 0, left: 0, right: 0, height: 7, borderTopLeftRadius: 3, borderTopRightRadius: 3 },
+  legendRectLetter: { fontSize: 7, fontWeight: '800', color: 'rgba(255,255,255,0.7)', marginTop: 2 },
   legendLine: { width: 14, height: 2, borderRadius: 1 },
   label: { fontSize: 10, fontWeight: '600' },
 });
@@ -805,20 +894,47 @@ export default function NeuralGraphScreen({ onBack }: NeuralGraphScreenProps) {
       <View style={[styles.canvas, { backgroundColor: t.background.screen }]}>
         {!hasResult ? (
           <View style={styles.emptyWrap}>
-            {/* Mini graph illustration */}
-            <View style={{ width: 130, height: 100, marginBottom: 28 }}>
-              <Svg width={130} height={100}>
-                {/* Demo edges */}
-                <Path d="M30,30 Q65,10 100,35" stroke={isDark ? 'rgba(196,181,253,0.3)' : 'rgba(124,58,237,0.2)'} strokeWidth={1.5} fill="none" />
-                <Path d="M30,30 Q40,65 65,70" stroke={isDark ? 'rgba(244,114,182,0.3)' : 'rgba(219,39,119,0.2)'} strokeWidth={1.5} fill="none" />
-                <Path d="M100,35 Q90,60 65,70" stroke={isDark ? 'rgba(110,231,183,0.3)' : 'rgba(5,150,105,0.2)'} strokeWidth={1.5} fill="none" />
-                {/* Demo nodes */}
-                <Circle cx={30} cy={30} r={14} fill={isDark ? '#c084fc' : '#a855f7'} fillOpacity={0.85} />
-                <SvgText x={30} y={34} textAnchor="middle" fontSize={10} fontWeight="800" fill="#fff">M</SvgText>
-                <Circle cx={100} cy={35} r={12} fill={isDark ? '#fbbf24' : '#f59e0b'} fillOpacity={0.85} />
-                <SvgText x={100} y={39} textAnchor="middle" fontSize={9} fontWeight="800" fill={isDark ? '#1c1917' : '#fff'}>F</SvgText>
-                <Circle cx={65} cy={70} r={12} fill={isDark ? '#6ee7b7' : '#34d399'} fillOpacity={0.85} />
-                <SvgText x={65} y={74} textAnchor="middle" fontSize={9} fontWeight="800" fill={isDark ? '#1c1917' : '#fff'}>A</SvgText>
+            {/* Blueprint diagram illustration */}
+            <View style={{ width: 160, height: 110, marginBottom: 28 }}>
+              <Svg width={160} height={110}>
+                {/* Mini grid */}
+                {[0, 40, 80, 120, 160].map(x => (
+                  <Line key={`gx-${x}`} x1={x} y1={0} x2={x} y2={110}
+                    stroke={isDark ? 'rgba(100,120,180,0.08)' : 'rgba(80,100,160,0.06)'} strokeWidth={0.5} />
+                ))}
+                {[0, 40, 80].map(y => (
+                  <Line key={`gy-${y}`} x1={0} y1={y} x2={160} y2={y}
+                    stroke={isDark ? 'rgba(100,120,180,0.08)' : 'rgba(80,100,160,0.06)'} strokeWidth={0.5} />
+                ))}
+                {/* Demo connector lines */}
+                <Line x1={55} y1={28} x2={105} y2={28} stroke={isDark ? 'rgba(196,181,253,0.4)' : 'rgba(124,58,237,0.3)'} strokeWidth={1.2} />
+                <Line x1={55} y1={28} x2={80} y2={78} stroke={isDark ? 'rgba(244,114,182,0.4)' : 'rgba(219,39,119,0.3)'} strokeWidth={1.2} />
+                <Line x1={130} y1={28} x2={105} y2={78} stroke={isDark ? 'rgba(110,231,183,0.4)' : 'rgba(5,150,105,0.3)'} strokeWidth={1.2} />
+                {/* Node 1 — Memory card */}
+                <Rect x={5} y={12} width={50} height={32} rx={4} fill={isDark ? 'rgba(15,15,25,0.9)' : '#fff'}
+                  stroke={isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'} strokeWidth={0.8} />
+                <Rect x={5} y={12} width={50} height={12} rx={4} fill={isDark ? '#c084fc' : '#a855f7'} fillOpacity={0.85} />
+                <Rect x={5} y={18} width={50} height={6} fill={isDark ? '#c084fc' : '#a855f7'} fillOpacity={0.85} />
+                <SvgText x={10} y={21} fontSize={6} fontWeight="800" fill="#fff">MEM</SvgText>
+                <SvgText x={30} y={38} textAnchor="middle" fontSize={7} fontWeight="600" fill={isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'}>node_a</SvgText>
+                {/* Node 2 — File card */}
+                <Rect x={105} y={12} width={50} height={32} rx={4} fill={isDark ? 'rgba(15,15,25,0.9)' : '#fff'}
+                  stroke={isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'} strokeWidth={0.8} />
+                <Rect x={105} y={12} width={50} height={12} rx={4} fill={isDark ? '#fbbf24' : '#f59e0b'} fillOpacity={0.85} />
+                <Rect x={105} y={18} width={50} height={6} fill={isDark ? '#fbbf24' : '#f59e0b'} fillOpacity={0.85} />
+                <SvgText x={110} y={21} fontSize={6} fontWeight="800" fill={isDark ? '#1c1917' : '#fff'}>FILE</SvgText>
+                <SvgText x={130} y={38} textAnchor="middle" fontSize={7} fontWeight="600" fill={isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'}>node_b</SvgText>
+                {/* Node 3 — Answer card */}
+                <Rect x={55} y={62} width={50} height={32} rx={4} fill={isDark ? 'rgba(15,15,25,0.9)' : '#fff'}
+                  stroke={isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'} strokeWidth={0.8} />
+                <Rect x={55} y={62} width={50} height={12} rx={4} fill={isDark ? '#6ee7b7' : '#34d399'} fillOpacity={0.85} />
+                <Rect x={55} y={68} width={50} height={6} fill={isDark ? '#6ee7b7' : '#34d399'} fillOpacity={0.85} />
+                <SvgText x={60} y={71} fontSize={6} fontWeight="800" fill={isDark ? '#1c1917' : '#fff'}>ANS</SvgText>
+                <SvgText x={80} y={88} textAnchor="middle" fontSize={7} fontWeight="600" fill={isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'}>node_c</SvgText>
+                {/* Endpoint dots */}
+                <Circle cx={55} cy={28} r={2} fill={isDark ? 'rgba(196,181,253,0.6)' : 'rgba(124,58,237,0.5)'} />
+                <Circle cx={105} cy={28} r={2} fill={isDark ? 'rgba(196,181,253,0.6)' : 'rgba(124,58,237,0.5)'} />
+                <Circle cx={80} cy={78} r={2} fill={isDark ? 'rgba(244,114,182,0.6)' : 'rgba(219,39,119,0.5)'} />
               </Svg>
             </View>
             <Text style={[styles.emptyTitle, { color: t.text.primary }]}>Neural Graph</Text>

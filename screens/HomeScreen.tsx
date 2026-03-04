@@ -613,7 +613,7 @@ const styles = StyleSheet.create({
   // Dreams stories
   storiesHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   seeAll: { fontSize: 13, fontWeight: '600', letterSpacing: 0.1 },
-  storyCard: { width: 90, height: 140, borderRadius: 18, overflow: 'hidden' },
+  storyCard: { width: 90, height: 180, borderRadius: 18, overflow: 'hidden' },
   storyInner: { flex: 1, padding: 10, justifyContent: 'flex-end' },
   storyDate: { fontSize: 8, color: 'rgba(255,255,255,0.75)', marginBottom: 4, fontWeight: '600', letterSpacing: 0.2 },
   storyTitle: { fontSize: 10, fontWeight: '700', lineHeight: 14, letterSpacing: -0.1 },

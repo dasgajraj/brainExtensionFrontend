@@ -216,7 +216,7 @@ const fvSt = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 32) + 8 : 56,
-    paddingHorizontal: 14, paddingBottom: 12, borderBottomWidth: 1,
+    paddingHorizontal: 14, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth,
   },
   closeBtn: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   closeIcon: { fontSize: 20 },
@@ -307,8 +307,12 @@ function FileCard({ file, t, onPress, onDelete, onQuickOpen }: FileCardProps) {
 const fcSt = StyleSheet.create({
   card: {
     flexDirection: 'row', alignItems: 'center',
-    borderRadius: 16, borderWidth: 1,
-    padding: 12, marginBottom: 10, gap: 10,
+    borderRadius: 18, borderWidth: StyleSheet.hairlineWidth,
+    padding: 14, marginBottom: 10, gap: 10,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4 },
+      android: { elevation: 1 },
+    }),
   },
   iconBox: {
     width: 54, height: 54, borderRadius: 14,
@@ -319,14 +323,14 @@ const fcSt = StyleSheet.create({
   info: { flex: 1, gap: 3 },
   name: { fontSize: 13, fontWeight: '700', letterSpacing: 0.1 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  typeBadge: { borderRadius: 5, borderWidth: 1, paddingHorizontal: 5, paddingVertical: 2 },
+  typeBadge: { borderRadius: 6, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 6, paddingVertical: 2 },
   typeText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.7 },
   size: { fontSize: 11 },
   dot: { width: 5, height: 5, borderRadius: 3 },
   statusTxt: { fontSize: 10, fontWeight: '600' },
   date: { fontSize: 10 },
   actions: { flexDirection: 'row', gap: 6, alignItems: 'center' },
-  actionBtn: { width: 32, height: 32, borderRadius: 9, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  actionBtn: { width: 34, height: 34, borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
   actionIcon: { fontSize: 11, fontWeight: '700' },
 });
 
@@ -509,15 +513,15 @@ const dsSt = StyleSheet.create({
   badgeRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
   badge: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
-    borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4,
+    borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 8, paddingVertical: 4,
   },
   badgeDot: { width: 5, height: 5, borderRadius: 3 },
   badgeTxt: { fontSize: 10, fontWeight: '800', letterSpacing: 0.6 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
   rowLabel: { fontSize: 13 },
   rowVal: { fontSize: 13, fontWeight: '600', maxWidth: '60%', textAlign: 'right' },
   urlRow: {
-    borderRadius: 12, borderWidth: 1, padding: 12,
+    borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, padding: 12,
     flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14,
   },
   urlLabel: { fontSize: 11, fontWeight: '700' },
@@ -526,9 +530,9 @@ const dsSt = StyleSheet.create({
   btnRow: { gap: 10, marginTop: 18 },
   primaryBtn: { borderRadius: 16, padding: 15, alignItems: 'center' },
   primaryBtnTxt: { color: '#fff', fontSize: 14, fontWeight: '800' },
-  secondaryBtn: { borderRadius: 16, borderWidth: 1, padding: 14, alignItems: 'center' },
+  secondaryBtn: { borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 14, alignItems: 'center' },
   secondaryBtnTxt: { fontSize: 14, fontWeight: '600' },
-  deleteBtn: { borderRadius: 16, borderWidth: 1, padding: 14, alignItems: 'center' },
+  deleteBtn: { borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 14, alignItems: 'center' },
   deleteBtnTxt: { fontSize: 14, fontWeight: '700' },
 });
 
@@ -550,7 +554,7 @@ const upSt = StyleSheet.create({
   banner: {
     position: 'absolute', top: 12, alignSelf: 'center',
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    borderRadius: 24, borderWidth: 1, paddingHorizontal: 18, paddingVertical: 10,
+    borderRadius: 24, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 18, paddingVertical: 10,
     zIndex: 50, elevation: 10,
   },
   txt: { fontSize: 13, fontWeight: '700' },
@@ -913,16 +917,20 @@ const ss = StyleSheet.create({
   // Top bar
   topBar: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 14, paddingVertical: 10,
-    borderBottomWidth: 1, gap: 10,
+    paddingHorizontal: 18, paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth, gap: 10,
   },
   backBtn: {
-    width: 38, height: 38, borderRadius: 10, borderWidth: 1,
+    width: 38, height: 38, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center', justifyContent: 'center',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3 },
+      android: { elevation: 1 },
+    }),
   },
   backIcon: { fontSize: 20, lineHeight: 22 },
   topCenter: { flex: 1 },
-  topTitle: { fontSize: 17, fontWeight: '800', letterSpacing: 0.2 },
+  topTitle: { fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
   topSub: { fontSize: 11, marginTop: 1 },
   uploadBtn: {
     width: 38, height: 38, borderRadius: 12,
@@ -933,7 +941,7 @@ const ss = StyleSheet.create({
   // Search
   searchRow: {
     flexDirection: 'row', alignItems: 'center',
-    marginHorizontal: 14, marginTop: 6, borderRadius: 12, borderWidth: 1,
+    marginHorizontal: 18, marginTop: 8, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 12, paddingVertical: 8, gap: 8,
   },
   searchIcon: { fontSize: 16 },
@@ -941,9 +949,9 @@ const ss = StyleSheet.create({
   searchClear: { fontSize: 14 },
 
   // Filter chips
-  filterRow: { paddingHorizontal: 14, paddingTop: 4, paddingBottom: 2, gap: 8, alignItems: 'center', flexDirection: 'row' },
+  filterRow: { paddingHorizontal: 18, paddingTop: 6, paddingBottom: 4, gap: 8, alignItems: 'center', flexDirection: 'row' },
   chip: {
-    borderRadius: 20, borderWidth: 1.5,
+    borderRadius: 20, borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 14, paddingVertical: 6,
   },
   chipTxt: { fontSize: 12, fontWeight: '700' },
@@ -951,7 +959,7 @@ const ss = StyleSheet.create({
   // Error
   errorBanner: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    marginHorizontal: 14, borderRadius: 12, borderWidth: 1,
+    marginHorizontal: 18, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 14, paddingVertical: 10, marginBottom: 6,
   },
   errorTxt: { fontSize: 13, flex: 1 },
@@ -962,12 +970,16 @@ const ss = StyleSheet.create({
   loadingTxt: { fontSize: 14 },
 
   // List
-  list: { paddingHorizontal: 14, paddingTop: 0 },
+  list: { paddingHorizontal: 18, paddingTop: 0 },
 
   // Stats
   statsRow: {
-    flexDirection: 'row', borderRadius: 14, borderWidth: 1,
+    flexDirection: 'row', borderRadius: 16, borderWidth: StyleSheet.hairlineWidth,
     paddingVertical: 12, marginTop: 2, marginBottom: 10,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
+      android: { elevation: 1 },
+    }),
   },
   statItem: { flex: 1, alignItems: 'center' },
   statVal: { fontSize: 18, fontWeight: '800' },

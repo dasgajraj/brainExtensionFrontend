@@ -137,7 +137,7 @@ const AuthButton: React.FC<AuthButtonProps> = ({
             borderRadius: t.shape.button,
             paddingVertical: t.spacing.md,
             paddingHorizontal: t.spacing.xl,
-            borderWidth: borderColor ? 1.5 : 0,
+            borderWidth: borderColor ? StyleSheet.hairlineWidth : 0,
             borderColor: borderColor ?? 'transparent',
             // Elevation / shadow (matches Onboarding1 nextButton shadow values)
             shadowColor: variant === 'primary' ? t.primary.shadow : 'transparent',

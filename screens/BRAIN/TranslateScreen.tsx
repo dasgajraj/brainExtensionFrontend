@@ -145,6 +145,7 @@ export default function TranslateScreen({ onBack }: TranslateScreenProps) {
   const [errorMsg, setErrorMsg] = useState('');
   const [history, setHistory] = useState<TranslateHistoryItem[]>([]);
   const [showHistory, setShowHistory] = useState(true);
+  const [showAllHistory, setShowAllHistory] = useState(false);
 
   const loadHistory = useCallback(async () => {
     const items = await getTranslateHistory();
@@ -224,36 +225,6 @@ export default function TranslateScreen({ onBack }: TranslateScreenProps) {
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
-
-        {/* ══ PAST RESULTS ══ */}
-        {history.length > 0 && (
-          <>
-            <View style={styles.histHeader}>
-              <TouchableOpacity
-                onPress={() => setShowHistory(v => !v)}
-                style={styles.histTitleRow}
-                activeOpacity={0.8}>
-                <Text style={[styles.histTitle, { color: t.text.primary }]}>Past Results</Text>
-                <View style={[styles.histCountBadge, { backgroundColor: t.primary.default + '20' }]}>
-                  <Text style={[styles.histCount, { color: t.primary.accent }]}>{history.length}</Text>
-                </View>
-                <Text style={[styles.histToggle, { color: t.text.muted }]}>{showHistory ? '▲' : '▼'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleClearHistory} activeOpacity={0.7}>
-                <Text style={[styles.clearHistBtn, { color: t.status.error }]}>Clear</Text>
-              </TouchableOpacity>
-            </View>
-
-            {showHistory && history.map(item => (
-              <HistoryCard
-                key={item.id}
-                item={item}
-                onPress={() => handleRestoreFromHistory(item)}
-                t={t}
-              />
-            ))}
-          </>
-        )}
 
         {/* ── Source Text ── */}
         <SectionLabel text="Text to Translate" t={t} />
@@ -379,6 +350,47 @@ export default function TranslateScreen({ onBack }: TranslateScreenProps) {
           </>
         )}
 
+        {/* ══ PAST RESULTS (bottom) ══ */}
+        {history.length > 0 && (
+          <>
+            <View style={styles.histHeader}>
+              <TouchableOpacity
+                onPress={() => setShowHistory(v => !v)}
+                style={styles.histTitleRow}
+                activeOpacity={0.8}>
+                <Text style={[styles.histTitle, { color: t.text.primary }]}>Past Results</Text>
+                <View style={[styles.histCountBadge, { backgroundColor: t.primary.default + '20' }]}>
+                  <Text style={[styles.histCount, { color: t.primary.accent }]}>{history.length}</Text>
+                </View>
+                <Text style={[styles.histToggle, { color: t.text.muted }]}>{showHistory ? '▲' : '▼'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleClearHistory} activeOpacity={0.7}>
+                <Text style={[styles.clearHistBtn, { color: t.status.error }]}>Clear</Text>
+              </TouchableOpacity>
+            </View>
+
+            {showHistory && (showAllHistory ? history : history.slice(0, 2)).map(item => (
+              <HistoryCard
+                key={item.id}
+                item={item}
+                onPress={() => handleRestoreFromHistory(item)}
+                t={t}
+              />
+            ))}
+
+            {showHistory && history.length > 2 && (
+              <TouchableOpacity
+                style={[styles.seeMoreBtn, { borderColor: t.border.default }]}
+                onPress={() => setShowAllHistory(v => !v)}
+                activeOpacity={0.75}>
+                <Text style={[styles.seeMoreText, { color: t.primary.accent }]}>
+                  {showAllHistory ? 'Show less' : `See more (${history.length - 2} more)`}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </>
+        )}
+
         <View style={{ height: 48 }} />
       </ScrollView>
     </SafeAreaView>
@@ -438,4 +450,8 @@ const styles = StyleSheet.create({
   // Again button
   againBtn: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, paddingVertical: 14, alignItems: 'center', marginTop: 18 },
   againBtnText: { fontSize: 14, fontWeight: '600' },
+
+  // See more
+  seeMoreBtn: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingVertical: 12, alignItems: 'center', marginTop: 8, marginBottom: 4 },
+  seeMoreText: { fontSize: 13, fontWeight: '600', letterSpacing: -0.1 },
 });

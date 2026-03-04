@@ -26,6 +26,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../redux/RootReducer';
 import { getTokens } from '../../theme/tokens';
 import { getDreams, DreamEntry } from '../../api/brain.api';
+import { markDreamAsSeen } from '../../services/dreamSeen.service';
 import { IconVolume, IconVolumeOff, IconX } from '../../components/ui/Icons';
 
 const { width, height } = Dimensions.get('window');
@@ -438,6 +439,11 @@ export default function DreamsScreen({ onBack, startIndex = 0, initialDreams, se
     if (stage !== 'story' || dreams.length === 0) { return; }
     runEntrance();
     startTimer(currentIndex, dreams.length);
+    // Mark the current dream as seen
+    const dream = dreams[currentIndex];
+    if (dream) {
+      markDreamAsSeen(dream.id);
+    }
     return () => { timerRef.current?.stop(); };
   }, [currentIndex, stage, dreams.length, runEntrance, startTimer]);
 

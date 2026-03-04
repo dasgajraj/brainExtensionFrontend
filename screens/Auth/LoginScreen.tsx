@@ -193,7 +193,7 @@ const LoginScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   errorBanner: {
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   forgotBtn: {
     alignSelf: 'flex-end',

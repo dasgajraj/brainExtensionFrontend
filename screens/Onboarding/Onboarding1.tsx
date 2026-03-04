@@ -262,7 +262,7 @@ const Onboarding1: React.FC<Onboarding1Props> = ({ onNext, onSkip, theme = 'dark
           onPress={onNext}
           activeOpacity={0.8}
         >
-          <Text style={styles.nextIcon}>Next</Text>
+          <Text style={[styles.nextIcon, { color: isDark ? '#000' : '#fff' }]}>Next</Text>
         </TouchableOpacity>
       </Animated.View>
     </LinearGradient>

@@ -2,7 +2,7 @@
  * components/ui/BottomNavBar.tsx
  *
  * Material 3 NavigationBar — 5 tabs.
- * Tabs: Home · Brain · Agent (elevated FAB center) · Files · Memory
+ * Tabs: Home · Brain · Agent (elevated FAB center) · Files · Profile
  *
  * Active indicator: pill-shaped background behind icon (Material 3 style).
  * No dot below label. Agent tab is a circular elevated FAB.
@@ -86,8 +86,8 @@ export default function BottomNavBar({ activeTab, onTabPress, t }: BottomNavBarP
 
         /* ── Elevated center FAB (Agent) ── */
         if (tab.isCenter) {
-          const fabBg        = active ? (isDark ? '#FFFFFF' : '#ffffff') : (isDark ? '#ffffff' : '#EBEBEB');
-          const fabIconColor = active ? (isDark ? '#000000' : '#000000') : '#000000';
+          const fabBg        = active ? (isDark ? '#FFFFFF' : '#000000') : (isDark ? '#1C1C1C' : '#FFFFFF');
+          const fabIconColor = active ? (isDark ? '#000000' : '#FFFFFF') : (isDark ? '#FFFFFF' : '#000000');
           return (
             <View key={tab.key} style={s.centerWrap}>
               <Animated.View style={{ transform: [{ scale: scaleAnims[index] }] }}>

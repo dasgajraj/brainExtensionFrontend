@@ -122,6 +122,7 @@ export default function VisionScreen({ onBack }: VisionScreenProps) {
   const [errorMsg, setErrorMsg] = useState('');
   const [history, setHistory] = useState<VisionHistoryItem[]>([]);
   const [showHistory, setShowHistory] = useState(true);
+  const [showAllHistory, setShowAllHistory] = useState(false);
 
   const loadHistory = useCallback(async () => {
     const items = await getVisionHistory();
@@ -230,39 +231,6 @@ export default function VisionScreen({ onBack }: VisionScreenProps) {
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
-
-        {/* ══ PAST RESULTS ══ */}
-        {history.length > 0 && (
-          <>
-            <View style={styles.histHeader}>
-              <TouchableOpacity
-                onPress={() => setShowHistory(v => !v)}
-                style={styles.histTitleRow}
-                activeOpacity={0.8}>
-                <Text style={[styles.histTitle, { color: t.text.primary }]}>Past Results</Text>
-                <View style={[styles.histCountBadge, { backgroundColor: t.primary.default + '20' }]}>
-                  <Text style={[styles.histCount, { color: t.primary.accent }]}>{history.length}</Text>
-                </View>
-                <Text style={[styles.histToggle, { color: t.text.muted }]}>{showHistory ? '▲' : '▼'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleClearHistory} activeOpacity={0.7}>
-                <Text style={[styles.clearHistBtn, { color: t.status.error }]}>Clear</Text>
-              </TouchableOpacity>
-            </View>
-
-            {showHistory && history.map(item => (
-              <HistoryCard
-                key={item.id}
-                item={item}
-                onPress={() => {
-                  setResult({ status: 'done', explanation: item.explanation });
-                  setErrorMsg('');
-                }}
-                t={t}
-              />
-            ))}
-          </>
-        )}
 
         {/* ── Pick Image ── */}
         <SectionLabel text="Image" t={t} />
@@ -383,6 +351,53 @@ export default function VisionScreen({ onBack }: VisionScreenProps) {
           </>
         )}
 
+        {/* ══ PAST RESULTS — below analyze/result ══ */}
+        {history.length > 0 && (
+          <>
+            <View style={styles.histHeader}>
+              <TouchableOpacity
+                onPress={() => setShowHistory(v => !v)}
+                style={styles.histTitleRow}
+                activeOpacity={0.8}>
+                <Text style={[styles.histTitle, { color: t.text.primary }]}>Past Results</Text>
+                <View style={[styles.histCountBadge, { backgroundColor: t.primary.default + '20' }]}>
+                  <Text style={[styles.histCount, { color: t.primary.accent }]}>{history.length}</Text>
+                </View>
+                <Text style={[styles.histToggle, { color: t.text.muted }]}>{showHistory ? '▲' : '▼'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleClearHistory} activeOpacity={0.7}>
+                <Text style={[styles.clearHistBtn, { color: t.status.error }]}>Clear</Text>
+              </TouchableOpacity>
+            </View>
+
+            {showHistory && (
+              <>
+                {(showAllHistory ? history : history.slice(0, 2)).map(item => (
+                  <HistoryCard
+                    key={item.id}
+                    item={item}
+                    onPress={() => {
+                      setResult({ status: 'done', explanation: item.explanation });
+                      setErrorMsg('');
+                    }}
+                    t={t}
+                  />
+                ))}
+                {history.length > 2 && (
+                  <TouchableOpacity
+                    style={[styles.showMoreBtn, { borderColor: t.border.default }]}
+                    onPress={() => setShowAllHistory(v => !v)}
+                    activeOpacity={0.7}>
+                    <Text style={[styles.showMoreTxt, { color: t.primary.accent }]}>
+                      {showAllHistory ? 'Show less ▲' : `Show all ${history.length} results ▼`}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            )}
+          </>
+        )}
+
         {/* Empty state */}
         {!result && !loading && !imageUri && errorMsg === '' && history.length === 0 && (
           <View style={styles.emptyState}>
@@ -455,6 +470,10 @@ const styles = StyleSheet.create({
   // Again button
   againBtn: { borderWidth: 1, borderRadius: 14, paddingVertical: 13, alignItems: 'center', marginTop: 16 },
   againBtnText: { fontSize: 14, fontWeight: '600' },
+
+  // Show more history
+  showMoreBtn: { borderWidth: 1, borderRadius: 12, paddingVertical: 11, alignItems: 'center', marginTop: 4, marginBottom: 8 },
+  showMoreTxt: { fontSize: 13, fontWeight: '600' },
 
   // Empty state
   emptyState: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: 24 },

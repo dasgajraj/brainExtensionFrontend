@@ -52,11 +52,16 @@ interface MemoryScreenProps {
 
 function formatDate(iso: string): string {
   try {
-    return new Date(iso).toLocaleDateString('en-US', {
-      month: 'short', day: 'numeric', year: 'numeric',
-    });
+    // Handle Unix epoch in seconds (e.g. "1709400000") or milliseconds
+    const num = Number(iso);
+    const ms = !isNaN(num) && String(iso).trim().length >= 8
+      ? (num < 1e12 ? num * 1000 : num)
+      : new Date(iso).getTime();
+    const d = new Date(ms);
+    if (isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   } catch {
-    return '';
+    return iso;
   }
 }
 
@@ -469,7 +474,7 @@ export default function MemoryScreen({ onBack }: MemoryScreenProps) {
   const addHeight = addBarAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 120] });
 
   return (
-    <SafeAreaView style={[s.root, { backgroundColor: t.background.screen }]} edges={['top']}>
+    <SafeAreaView style={[s.root, { backgroundColor: t.background.screen }]} edges={[]}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor={t.background.screen}

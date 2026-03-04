@@ -323,9 +323,16 @@ const ldSt = StyleSheet.create({
 });
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
-interface DreamsScreenProps { onBack: () => void; startIndex?: number; }
+interface DreamsScreenProps {
+  onBack: () => void;
+  startIndex?: number;
+  /** Pre-sorted list from HomeScreen — skips internal fetch when provided */
+  initialDreams?: DreamEntry[];
+  /** Seen IDs from HomeScreen — used to skip to first unseen if no startIndex */
+  seenIds?: Set<string>;
+}
 
-export default function DreamsScreen({ onBack, startIndex = 0 }: DreamsScreenProps) {
+export default function DreamsScreen({ onBack, startIndex = 0, initialDreams, seenIds }: DreamsScreenProps) {
   const themeMode = useSelector((s: RootState) => s.theme.mode);
   const isDark = themeMode === 'dark';
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -346,8 +353,13 @@ export default function DreamsScreen({ onBack, startIndex = 0 }: DreamsScreenPro
   const soundRef = useRef<any>(null);
   const timerRef = useRef<Animated.CompositeAnimation | null>(null);
 
-  // ── Fetch data ─────────────────────────────────────────────────────────────
+  // ── Fetch data (or use pre-sorted list from HomeScreen) ───────────────────
   useEffect(() => {
+    if (initialDreams && initialDreams.length > 0) {
+      setDreams(initialDreams);
+      setStage('story');
+      return;
+    }
     (async () => {
       try {
         const res = await getDreams();
@@ -363,6 +375,7 @@ export default function DreamsScreen({ onBack, startIndex = 0 }: DreamsScreenPro
         setStage('error');
       }
     })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Init sound ─────────────────────────────────────────────────────────────

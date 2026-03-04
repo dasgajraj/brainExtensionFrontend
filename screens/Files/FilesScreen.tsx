@@ -715,7 +715,7 @@ export default function FilesScreen({ onBack }: FilesScreenProps) {
 
       {uploading && <UploadBanner t={t} />}
 
-      <SafeAreaView style={ss.safe} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={ss.safe} edges={['left', 'right']}>
         {/* ── Top bar ── */}
         <View style={[ss.topBar, { borderBottomColor: t.border.subtle }]}>
           <TouchableOpacity
@@ -735,7 +735,7 @@ export default function FilesScreen({ onBack }: FilesScreenProps) {
             onPress={openUploadPicker}
             disabled={uploading}
             activeOpacity={0.85}>
-            <Text style={ss.uploadBtnTxt}>+</Text>
+            <Text style={[ss.uploadBtnTxt, { color: t.text.onPrimary }]}>+</Text>
           </TouchableOpacity>
         </View>
 
@@ -767,15 +767,16 @@ export default function FilesScreen({ onBack }: FilesScreenProps) {
             return (
               <TouchableOpacity
                 key={tab}
-                style={[ss.chip,
+                style={[
+                  ss.chip,
                   active
                     ? { backgroundColor: t.primary.default, borderColor: t.primary.default }
-                    : { backgroundColor: t.background.surface, borderColor: t.border.default },
+                    : { backgroundColor: t.background.surface, borderColor: t.text.muted + '60' },
                 ]}
                 onPress={() => setActiveFilter(tab)}
                 activeOpacity={0.8}>
-                <Text style={[ss.chipTxt, { color: active ? '#fff' : t.text.secondary }]}>
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                <Text style={[ss.chipTxt, { color: active ? (themeMode === 'dark' ? '#000' : '#fff') : t.text.primary }]}>
+                  {tab === 'all' ? 'All' : tab.charAt(0).toUpperCase() + tab.slice(1)}
                 </Text>
               </TouchableOpacity>
             );
@@ -932,7 +933,7 @@ const ss = StyleSheet.create({
   // Search
   searchRow: {
     flexDirection: 'row', alignItems: 'center',
-    marginHorizontal: 14, marginTop: 10, borderRadius: 12, borderWidth: 1,
+    marginHorizontal: 14, marginTop: 6, borderRadius: 12, borderWidth: 1,
     paddingHorizontal: 12, paddingVertical: 8, gap: 8,
   },
   searchIcon: { fontSize: 16 },
@@ -940,12 +941,12 @@ const ss = StyleSheet.create({
   searchClear: { fontSize: 14 },
 
   // Filter chips
-  filterRow: { paddingHorizontal: 14, paddingVertical: 10, gap: 8, alignItems: 'center', flexDirection: 'row' },
+  filterRow: { paddingHorizontal: 14, paddingTop: 4, paddingBottom: 2, gap: 8, alignItems: 'center', flexDirection: 'row' },
   chip: {
-    borderRadius: 20, borderWidth: 1,
+    borderRadius: 20, borderWidth: 1.5,
     paddingHorizontal: 14, paddingVertical: 6,
   },
-  chipTxt: { fontSize: 12, fontWeight: '600' },
+  chipTxt: { fontSize: 12, fontWeight: '700' },
 
   // Error
   errorBanner: {
@@ -961,12 +962,12 @@ const ss = StyleSheet.create({
   loadingTxt: { fontSize: 14 },
 
   // List
-  list: { paddingHorizontal: 14, paddingTop: 4 },
+  list: { paddingHorizontal: 14, paddingTop: 0 },
 
   // Stats
   statsRow: {
     flexDirection: 'row', borderRadius: 14, borderWidth: 1,
-    paddingVertical: 12, marginBottom: 14,
+    paddingVertical: 12, marginTop: 2, marginBottom: 10,
   },
   statItem: { flex: 1, alignItems: 'center' },
   statVal: { fontSize: 18, fontWeight: '800' },

@@ -189,7 +189,7 @@ export default function AgentScreen({ onBack }: AgentScreenProps) {
   const authBg = authed ? t.status.successSubtle : t.status.errorSubtle;
 
   return (
-    <SafeAreaView style={[s.safe, { backgroundColor: t.background.screen }]}>
+    <SafeAreaView edges={[]} style={[s.safe, { backgroundColor: t.background.screen }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={t.background.screen} />
 
       {/* Header — identical structure to BrainAskScreen / NeuralGraphScreen */}

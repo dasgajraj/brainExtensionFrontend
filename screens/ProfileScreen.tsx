@@ -210,7 +210,7 @@ function ProfileScreen({ onBack }: ProfileScreenProps) {
   };
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: t.background.screen }]}>
+    <SafeAreaView edges={[]} style={[styles.safe, { backgroundColor: t.background.screen }]}>
       <StatusBar
         barStyle={themeMode === 'dark' ? 'light-content' : 'dark-content'}
         backgroundColor={t.background.screen}

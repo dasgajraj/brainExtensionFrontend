@@ -1,4 +1,31 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+
+// ── Relative-time helper for dream story cards ─────────────────────────────
+function dreamTimeAgo(dateStr: string): string {
+  try {
+    const num = Number(dateStr);
+    const ms = !isNaN(num) && String(dateStr).trim().length >= 8
+      ? (num < 1e12 ? num * 1000 : num)
+      : new Date(dateStr).getTime();
+    const diff = Date.now() - ms;
+    if (isNaN(diff) || diff < 0) {
+      // fallback: just return the raw string if we can't compute
+      return dateStr.length > 12 ? dateStr.slice(0, 10) : dateStr;
+    }
+    const secs = Math.floor(diff / 1000);
+    const mins = Math.floor(secs / 60);
+    const hrs  = Math.floor(mins / 60);
+    const days = Math.floor(hrs  / 24);
+    if (secs < 60)  return `${secs}s ago`;
+    if (mins < 60)  return `${mins}m ago`;
+    if (hrs  < 24)  return `${hrs}h ago`;
+    if (days < 7)   return `${days}d ago`;
+    // older — show short date
+    return new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } catch {
+    return dateStr.length > 10 ? dateStr.slice(0, 10) : dateStr;
+  }
+}
 import {
   View,
   Text,
@@ -11,6 +38,7 @@ import {
   Dimensions,
   BackHandler,
   Animated,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
@@ -88,6 +116,7 @@ interface FeatureCardData {
   title: string;
   description: string;
   accentColor: string;
+  useLogo?: boolean;
 }
 
 const FEATURE_CARDS: FeatureCardData[] = [
@@ -95,7 +124,7 @@ const FEATURE_CARDS: FeatureCardData[] = [
   { key: 'brainResult', icon: IconClipboard, title: 'Brain Result', description: 'Fetch the full output of any request using its ID', accentColor: '#f59e0b' },
   { key: 'translate', icon: IconGlobe, title: 'Translate', description: 'Translate any text into Hindi, Hinglish, Tamil and more', accentColor: '#a78bfa' },
   { key: 'vision', icon: IconEye, title: 'Vision', description: 'Analyse images with AI — get detailed explanations instantly', accentColor: '#10b981' },
-  { key: 'dreams', icon: IconStar, title: 'Brain Dreams', description: 'Explore your cognitive dream journal — subconscious insights', accentColor: '#7c3aed' },
+  { key: 'dreams', icon: IconStar, title: 'Brain Dreams', description: 'Explore your cognitive dream journal — subconscious insights', accentColor: '#7c3aed', useLogo: true },  
   { key: 'neural', icon: IconNetwork, title: 'Neural Graph', description: 'Visualise semantic connections between your memories and files', accentColor: '#ec4899' },
   { key: 'files', icon: IconFolder, title: 'My Files', description: 'Upload and manage files — images, PDFs, code and more', accentColor: '#0ea5e9' },
   { key: 'memory', icon: IconMemory, title: 'Memory', description: 'Store, search and manage long-term memories in your Cognitive OS', accentColor: '#14b8a6' },
@@ -137,7 +166,9 @@ function NavCard({ data, onPress, t, index }: NavCardProps) {
         onPress={onPress}
         activeOpacity={0.82}>
         <View style={[cardStyles.iconWrap, { backgroundColor: data.accentColor + '1A' }]}>
-          <Icon size={22} color={data.accentColor} />
+          {data.useLogo
+            ? <Image source={require('../assets/app-logo.png')} style={{ width: 26, height: 26, tintColor: data.accentColor }} resizeMode="contain" />
+            : <Icon size={22} color={data.accentColor} />}
         </View>
         <Text style={[cardStyles.title, { color: t.text.primary }]}>{data.title}</Text>
         <Text style={[cardStyles.desc, { color: t.text.muted }]} numberOfLines={2}>
@@ -269,7 +300,7 @@ function HomeScreen() {
       brainResult: <BrainResultScreen onBack={() => navigate('home')} />,
       translate: <TranslateScreen onBack={() => navigate('home')} />,
       vision: <VisionScreen onBack={() => navigate('home')} />,
-      dreams: <DreamsScreen onBack={() => { navigate('home'); loadDreams(); }} startIndex={dreamStartIndex} />,
+      dreams: <DreamsScreen onBack={() => { navigate('home'); loadDreams(); }} startIndex={dreamStartIndex} initialDreams={dreams} seenIds={seenIds} />,
       neural: <NeuralGraphScreen onBack={() => navigate('home')} />,
     };
     return <>{overlayMap[page]}</>;
@@ -344,11 +375,15 @@ function HomeScreen() {
                   </View>
                 )}
               </View>
-              <TouchableOpacity
-                onPress={() => { setDreamStartIndex(0); navigate('dreams'); }}
-                activeOpacity={0.7}>
-                <Text style={[styles.seeAll, { color: t.primary.accent }]}>Open all</Text>
-              </TouchableOpacity>
+              {hasMore && (
+                <TouchableOpacity
+                  onPress={() => setShowAllDreams(v => !v)}
+                  activeOpacity={0.7}>
+                  <Text style={[styles.seeAll, { color: t.primary.accent }]}>
+                    {showAllDreams ? 'Show less' : `Show all (${dreams.length})`}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Horizontal dream cards */}
@@ -384,9 +419,9 @@ function HomeScreen() {
                           ? (isDark ? '#1a1a1a' : '#e0e0e0')
                           : accent + 'CC' },
                     ]}>
-                      {/* Date label */}
+                      {/* Date label — relative time */}
                       {!isSeen && item.date ? (
-                        <Text style={styles.storyDate} numberOfLines={1}>{item.date}</Text>
+                        <Text style={styles.storyDate} numberOfLines={1}>{dreamTimeAgo(item.date)}</Text>
                       ) : null}
                       <Text
                         style={[styles.storyTitle, {
@@ -408,23 +443,6 @@ function HomeScreen() {
                 );
               }}
             />
-
-            {/* See more / See less toggle */}
-            {hasMore && (
-              <TouchableOpacity
-                style={[styles.seeMoreBtn, { borderColor: t.border.default, backgroundColor: t.background.surface }]}
-                onPress={() => setShowAllDreams(v => !v)}
-                activeOpacity={0.75}>
-                <Text style={[styles.seeMoreTxt, { color: t.text.secondary }]}>
-                  {showAllDreams
-                    ? 'See less'
-                    : `See ${dreams.length - INITIAL_COUNT} more`}
-                </Text>
-                <Text style={[styles.seeMoreTxt, { color: t.text.secondary }]}>
-                  {showAllDreams ? '↑' : '↓'}
-                </Text>
-              </TouchableOpacity>
-            )}
           </View>
         );
       })()}

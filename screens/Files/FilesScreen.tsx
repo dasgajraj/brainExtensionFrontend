@@ -763,9 +763,7 @@ export default function FilesScreen({ onBack }: FilesScreenProps) {
         </View>
 
         {/* ── Filter chips ── */}
-        <ScrollView
-          horizontal showsHorizontalScrollIndicator={false}
-          contentContainerStyle={ss.filterRow}>
+        <View style={ss.filterRow}>
           {FILTER_TABS.map(tab => {
             const active = tab === activeFilter;
             return (
@@ -779,13 +777,15 @@ export default function FilesScreen({ onBack }: FilesScreenProps) {
                 ]}
                 onPress={() => setActiveFilter(tab)}
                 activeOpacity={0.8}>
-                <Text style={[ss.chipTxt, { color: active ? (themeMode === 'dark' ? '#000' : '#fff') : t.text.primary }]}>
+                <Text
+                  style={[ss.chipTxt, { color: active ? (themeMode === 'dark' ? '#000' : '#fff') : t.text.primary }]}
+                  numberOfLines={1}>
                   {tab === 'all' ? 'All' : tab.charAt(0).toUpperCase() + tab.slice(1)}
                 </Text>
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
+        </View>
 
         {/* ── Error banner ── */}
         {errorMsg !== '' && (
@@ -948,11 +948,15 @@ const ss = StyleSheet.create({
   searchInput: { flex: 1, fontSize: 14, padding: 0 },
   searchClear: { fontSize: 14 },
 
-  // Filter chips
-  filterRow: { paddingHorizontal: 18, paddingTop: 6, paddingBottom: 4, gap: 8, alignItems: 'center', flexDirection: 'row' },
+  // Filter chips — static fixed size, wrap to next row, never compress
+  filterRow: {
+    flexDirection: 'row', flexWrap: 'wrap',
+    paddingHorizontal: 16, paddingTop: 8, paddingBottom: 6, gap: 8,
+  },
   chip: {
     borderRadius: 20, borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 14, paddingVertical: 6,
+    width: 64, height: 34,
+    alignItems: 'center', justifyContent: 'center',
   },
   chipTxt: { fontSize: 12, fontWeight: '700' },
 

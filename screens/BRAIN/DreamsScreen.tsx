@@ -13,7 +13,7 @@ import React, {
   useState, useEffect, useRef, useCallback,
 } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, StatusBar,
+  View, Text, StyleSheet, TouchableOpacity, StatusBar, Image,
   ActivityIndicator, Animated, Easing, Dimensions, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -54,6 +54,16 @@ const LIGHT_GRADIENTS: [string, string, string][] = [
 ];
 
 const GRADIENTS = DARK_GRADIENTS; // default — overridden per render based on theme
+
+// ─── Background image cycle ───────────────────────────────────────────────────
+const BG_IMAGES = [
+  require('../../assets/1.webp'),
+  require('../../assets/2.webp'),
+  require('../../assets/3.webp'),
+  require('../../assets/4.webp'),
+  require('../../assets/5.webp'),
+  require('../../assets/6.webp'),
+];
 
 const ACCENTS = ['#a78bfa', '#818cf8', '#60a5fa', '#fb923c', '#38bdf8', '#34d399', '#fbbf24'];
 const LIGHT_ACCENTS = ['#7c3aed', '#4f46e5', '#0284c7', '#d97706', '#0369a1', '#059669', '#b45309'];
@@ -165,8 +175,9 @@ interface CardProps {
   bodyFade: Animated.Value;
   cardRef: React.RefObject<View>;
   isDark: boolean;
+  bgIndex: number;
 }
-function DreamCardContent({ dream, accent, gradColors, titleSlide, bodyFade, cardRef, isDark }: CardProps) {
+function DreamCardContent({ dream, accent, gradColors, titleSlide, bodyFade, cardRef, isDark, bgIndex }: CardProps) {
   const date = (() => {
     try {
       return new Date(dream.date).toLocaleDateString('en-IN', {
@@ -177,12 +188,15 @@ function DreamCardContent({ dream, accent, gradColors, titleSlide, bodyFade, car
 
   return (
     <View style={{ flex: 1 }} ref={cardRef} collapsable={false}>
-      {/* Base gradient */}
-      <LinearGradient
-        colors={gradColors}
+      {/* Blurred image background */}
+      <Image
+        source={BG_IMAGES[bgIndex % BG_IMAGES.length]}
         style={StyleSheet.absoluteFill}
-        start={{ x: 0.3, y: 0 }} end={{ x: 0.7, y: 1 }}
+        blurRadius={0.5}
+        resizeMode="cover"
       />
+      {/* Dark/tint overlay — preserves the dreamy colour palette */}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(6,3,15,0.62)' : 'rgba(245,240,255,0.52)' }]} />
       {/* Top vignette */}
       <LinearGradient
         colors={isDark ? ['rgba(0,0,0,0.5)', 'transparent'] : ['rgba(0,0,0,0.15)', 'transparent']}
@@ -539,6 +553,7 @@ export default function DreamsScreen({ onBack, startIndex = 0, initialDreams, se
             bodyFade={bodyFade}
             cardRef={cardRef as React.RefObject<View>}
             isDark={isDark}
+            bgIndex={currentIndex % BG_IMAGES.length}
           />
         )}
       </Animated.View>

@@ -110,6 +110,16 @@ const OVERLAY_PAGES = new Set<Page>(['brainResult', 'translate', 'vision', 'drea
 const { width: SCREEN_W } = Dimensions.get('window');
 const CARD_W = (SCREEN_W - 48) / 2;
 
+// ─── Background images for dream story cards ─────────────────────────────────
+const HOME_BG_IMAGES = [
+  require('../assets/1.webp'),
+  require('../assets/2.webp'),
+  require('../assets/3.webp'),
+  require('../assets/4.webp'),
+  require('../assets/5.webp'),
+  require('../assets/6.webp'),
+];
+
 // ─── Feature Card Data ──────────────────────────────────────────────────────
 interface FeatureCardData {
   key: Page;
@@ -445,11 +455,18 @@ function HomeScreen() {
                         ? { borderColor: t.border.default, borderWidth: 1.5, opacity: 0.5 }
                         : { borderColor: accent, borderWidth: 2.5 },
                     ]}>
+                    {/* Blurred image background */}
+                    <Image
+                      source={HOME_BG_IMAGES[colorIdx % HOME_BG_IMAGES.length]}
+                      style={StyleSheet.absoluteFill}
+                      blurRadius={0.5}
+                      resizeMode="cover"
+                    />
                     <View style={[
                       styles.storyInner,
                       { backgroundColor: isSeen
-                          ? t.background.elevated
-                          : accent + 'DD' },
+                          ? 'rgba(0,0,0,0.45)'
+                          : accent + '99' },
                     ]}>
                       {!isSeen && item.date ? (
                         <Text style={styles.storyDate} numberOfLines={1}>{dreamTimeAgo(item.date)}</Text>

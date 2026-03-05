@@ -11,9 +11,10 @@ import React, {
 } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, StatusBar,
-  ActivityIndicator, Animated, PanResponder,
+  ActivityIndicator, Animated, PanResponder, Modal, Platform,
   Dimensions, ScrollView,
 } from 'react-native';
+import WebView from 'react-native-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 import Svg, {
@@ -86,7 +87,7 @@ function runForceSimulation(
   rawNodes: GraphNode[],
   links: GraphLink[],
   W: number, H: number,
-  iterations = 220,
+  iterations = 150,
 ): SimNode[] {
   if (!rawNodes.length) return [];
 
@@ -229,6 +230,22 @@ function bezierMidpoint(
   return { x: qx, y: qy };
 }
 
+/* ── Shortest distance from point (px,py) to segment (ax,ay)-(bx,by) ────── */
+function distToSegment(
+  px: number, py: number,
+  ax: number, ay: number, bx: number, by: number,
+): number {
+  const dx = bx - ax; const dy = by - ay;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return Math.sqrt((px - ax) ** 2 + (py - ay) ** 2);
+  let t = ((px - ax) * dx + (py - ay) * dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  return Math.sqrt((px - (ax + t * dx)) ** 2 + (py - (ay + t * dy)) ** 2);
+}
+
+export type EdgeData = { src: string; tgt: string; totalStr: number; count: number };
+export type FilterType = 'all' | 'memory' | 'file' | 'answer';
+
 /* ── Node Detail Sheet ───────────────────────────────────────────────── */
 function NodeSheet({ node, links, allNodes, t, isDark, onClose }: {
   node: SimNode | null; links: GraphLink[]; allNodes: SimNode[];
@@ -249,15 +266,9 @@ function NodeSheet({ node, links, allNodes, t, isDark, onClose }: {
     }
   }, [node, slideAnim, fadeAnim]);
 
-  if (!node) return null;
-
-  const nc = getNodeColors(isDark);
-  const stats = computeNodeStats(node.id, links);
-  const isMemory = node.type === 'memory';
-  const colors = isMemory ? nc.memory : nc.file;
-
-  // Find connected nodes with names
+  // Find connected nodes — MUST be before any conditional return (Rules of Hooks)
   const connections = useMemo(() => {
+    if (!node) return [];
     const conns: { id: string; label: string; strength: number; direction: string }[] = [];
     const seen = new Set<string>();
     links.forEach(l => {
@@ -273,7 +284,14 @@ function NodeSheet({ node, links, allNodes, t, isDark, onClose }: {
       }
     });
     return conns.sort((a, b) => b.strength - a.strength);
-  }, [node.id, links, allNodes]);
+  }, [node?.id, links, allNodes]);
+
+  if (!node) return null;
+
+  const nc = getNodeColors(isDark);
+  const stats = computeNodeStats(node.id, links);
+  const isMemory = node.type === 'memory';
+  const colors = isMemory ? nc.memory : nc.file;
 
   return (
     <Animated.View style={[sheetSt.backdrop, { opacity: fadeAnim }]}>
@@ -358,7 +376,7 @@ function NodeSheet({ node, links, allNodes, t, isDark, onClose }: {
           <View style={[sheetSt.preview, { backgroundColor: t.background.input, borderColor: t.border.subtle }]}>
             <Text style={[sheetSt.previewLbl, { color: t.text.muted }]}>Content</Text>
             <Text style={[sheetSt.previewTxt, { color: t.text.secondary }]}>
-              {node.fullText.length > 280 ? node.fullText.slice(0, 280) + '...' : node.fullText}
+              {node.fullText}
             </Text>
           </View>
         </ScrollView>
@@ -369,43 +387,335 @@ function NodeSheet({ node, links, allNodes, t, isDark, onClose }: {
 const sheetSt = StyleSheet.create({
   backdrop: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
   container: {
-    borderTopLeftRadius: 22, borderTopRightRadius: 22, borderWidth: 1, borderBottomWidth: 0,
-    paddingHorizontal: 20, paddingTop: 10, paddingBottom: 30,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: StyleSheet.hairlineWidth, borderBottomWidth: 0,
+    paddingHorizontal: 22, paddingTop: 10, paddingBottom: 34,
   },
-  handle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 14 },
-  topRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  typePill: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 },
+  handle: { width: 38, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
+  typePill: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
   typeDot: { width: 7, height: 7, borderRadius: 4 },
   typeLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.4 },
-  closeBtn: { width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  closeBtn: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   closeTxt: { fontSize: 13, fontWeight: '700' },
-  nodeLabel: { fontSize: 16, fontWeight: '700', lineHeight: 22, marginBottom: 14 },
-  statsWrap: { flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, paddingVertical: 14, marginBottom: 14 },
+  nodeLabel: { fontSize: 17, fontWeight: '700', lineHeight: 23, marginBottom: 16, letterSpacing: -0.2 },
+  statsWrap: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: 16, marginBottom: 16 },
   statCell: { flex: 1, alignItems: 'center' },
   statVal: { fontSize: 18, fontWeight: '800' },
-  statLbl: { fontSize: 9, letterSpacing: 0.5, marginTop: 2, textTransform: 'uppercase' },
-  section: { marginBottom: 12 },
-  sectionTitle: { fontSize: 10, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 },
-  connRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 7 },
-  connDir: { borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2 },
+  statLbl: { fontSize: 9, letterSpacing: 0.6, marginTop: 3, textTransform: 'uppercase' },
+  section: { marginBottom: 14 },
+  sectionTitle: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 10 },
+  connRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 },
+  connDir: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3 },
   connDirText: { fontSize: 8, fontWeight: '800', letterSpacing: 0.5 },
-  connLabel: { flex: 1, fontSize: 12 },
-  connStr: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  connLabel: { flex: 1, fontSize: 12, letterSpacing: -0.1 },
+  connStr: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
   connStrText: { fontSize: 10, fontWeight: '700' },
   moreText: { fontSize: 11, marginTop: 4 },
-  preview: { borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 8 },
-  previewLbl: { fontSize: 10, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 },
-  previewTxt: { fontSize: 13, lineHeight: 19 },
+  preview: { borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 16, marginBottom: 10 },
+  previewLbl: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 10 },
+  previewTxt: { fontSize: 13, lineHeight: 20 },
 });
 
-/* ── Force Graph Canvas ──────────────────────────────────────────────── */
-function ForceGraph({ simNodes, links, selectedId, onNodeTap, onBgTap, isDark }: {
+/* ── Mermaid diagram renderer (WebView + mermaid CDN) ────────────── */
+function MermaidBlock({ code, isDark }: { code: string; isDark: boolean }) {
+  const bg = isDark ? '#0a0a14' : '#ffffff';
+  const html = `<!DOCTYPE html><html><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:${bg};display:flex;align-items:flex-start;justify-content:center;padding:10px;min-height:100vh}
+    .mermaid svg{max-width:100%!important;height:auto}
+  </style>
+</head><body>
+  <div class="mermaid">${code.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}</div>
+  <script>mermaid.initialize({startOnLoad:true,theme:'${isDark ? 'dark' : 'neutral'}',fontFamily:'sans-serif'});</script>
+</body></html>`;
+  return (
+    <View style={{ borderRadius: 14, overflow: 'hidden', marginVertical: 8 }}>
+      <WebView
+        source={{ html }}
+        style={{ height: 260 }}
+        scrollEnabled={false}
+        javaScriptEnabled
+        originWhitelist={['*']}
+      />
+    </View>
+  );
+}
+
+/* ── Rich text renderer with Mermaid block support ───────────────── */
+function RichContent({ text, t, isDark }: { text: string; t: T; isDark: boolean }) {
+  // Split into mermaid blocks and plain text
+  const parts: Array<{ type: 'text' | 'mermaid'; content: string }> = [];
+  const mermaidRe = /```mermaid\s*([\s\S]*?)```/g;
+  let lastIdx = 0;
+  let m: RegExpExecArray | null;
+  while ((m = mermaidRe.exec(text)) !== null) {
+    if (m.index > lastIdx) parts.push({ type: 'text', content: text.slice(lastIdx, m.index).trim() });
+    parts.push({ type: 'mermaid', content: m[1].trim() });
+    lastIdx = m.index + m[0].length;
+  }
+  if (lastIdx < text.length) parts.push({ type: 'text', content: text.slice(lastIdx).trim() });
+
+  return (
+    <>
+      {parts.map((p, i) =>
+        p.type === 'mermaid' ? (
+          <View key={i}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+              <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: isDark ? '#c084fc' : '#a855f7' }} />
+              <Text style={{ fontSize: 9, fontWeight: '700', letterSpacing: 1, color: isDark ? '#c084fc' : '#7c3aed', textTransform: 'uppercase' }}>
+                Diagram
+              </Text>
+            </View>
+            <MermaidBlock code={p.content} isDark={isDark} />
+          </View>
+        ) : (
+          <Text key={i} style={[sheetSt.previewTxt, { color: t.text.secondary }]}>{p.content}</Text>
+        ),
+      )}
+    </>
+  );
+}
+
+/* ── Memory full-detail modal ─────────────────────────────────────── */
+function MemoryModal({ node, links, allNodes, t, isDark, onClose }: {
+  node: SimNode | null; links: GraphLink[]; allNodes: SimNode[];
+  t: T; isDark: boolean; onClose: () => void;
+}) {
+  const nc = getNodeColors(isDark);
+  const colors = nc.memory;
+
+  const connections = useMemo(() => {
+    if (!node) return [];
+    const conns: { id: string; label: string; strength: number; direction: string }[] = [];
+    const seen = new Set<string>();
+    links.forEach(l => {
+      if (l.source === node.id && l.target !== node.id && !seen.has(l.target)) {
+        seen.add(l.target);
+        const target = allNodes.find(n => n.id === l.target);
+        if (target) conns.push({ id: l.target, label: target.label, strength: l.strength, direction: 'out' });
+      }
+      if (l.target === node.id && l.source !== node.id && !seen.has(l.source)) {
+        seen.add(l.source);
+        const source = allNodes.find(n => n.id === l.source);
+        if (source) conns.push({ id: l.source, label: source.label, strength: l.strength, direction: 'in' });
+      }
+    });
+    return conns.sort((a, b) => b.strength - a.strength);
+  }, [node?.id, links, allNodes]);
+
+  const stats = node ? computeNodeStats(node.id, links) : { inbound: 0, outbound: 0, selfLoop: 0, total: 0 };
+
+  return (
+    <Modal
+      visible={node != null}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: t.background.screen }}>
+        {/* Header */}
+        <View style={[mmSt.header, { borderBottomColor: t.border.subtle }]}>
+          <View style={[sheetSt.typePill, { backgroundColor: colors.bg }]}>
+            <View style={[sheetSt.typeDot, { backgroundColor: colors.fill }]} />
+            <Text style={[sheetSt.typeLabel, { color: colors.fill }]}>Memory</Text>
+          </View>
+          <Text style={[mmSt.title, { color: t.text.primary }]} numberOfLines={2}>
+            {node?.label}
+          </Text>
+          <TouchableOpacity onPress={onClose} style={[mmSt.closeBtn, { backgroundColor: t.background.input }]}>
+            <Text style={[mmSt.closeTxt, { color: t.text.muted }]}>✕</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
+          {/* Attributes grid */}
+          <View style={[mmSt.attrCard, { backgroundColor: t.background.elevated, borderColor: t.border.subtle }]}>
+            <Text style={[mmSt.sectionLabel, { color: t.text.muted }]}>Attributes</Text>
+            {[
+              { key: 'ID',     val: node?.id ?? '' },
+              { key: 'Type',   val: node?.type ?? '' },
+              { key: 'Group',  val: node?.group ?? '' },
+              { key: 'Weight', val: String(node?.val ?? 0) },
+            ].map(attr => (
+              <View key={attr.key} style={[mmSt.attrRow, { borderTopColor: t.border.subtle }]}>
+                <Text style={[mmSt.attrKey, { color: t.text.muted }]}>{attr.key}</Text>
+                <Text style={[mmSt.attrVal, { color: t.text.primary }]} selectable>{attr.val}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Stats */}
+          <View style={[sheetSt.statsWrap, { borderColor: t.border.subtle, marginBottom: 20 }]}>
+            {[
+              { val: connections.length, lbl: 'Connections', clr: colors.fill },
+              { val: stats.inbound,      lbl: 'Inbound',     clr: isDark ? '#c4b5fd' : '#7c3aed' },
+              { val: stats.outbound,     lbl: 'Outbound',    clr: isDark ? '#fbbf24' : '#d97706' },
+            ].map(s => (
+              <View key={s.lbl} style={sheetSt.statCell}>
+                <Text style={[sheetSt.statVal, { color: s.clr }]}>{s.val}</Text>
+                <Text style={[sheetSt.statLbl, { color: t.text.muted }]}>{s.lbl}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Connections list */}
+          {connections.length > 0 && (
+            <View style={[mmSt.attrCard, { backgroundColor: t.background.elevated, borderColor: t.border.subtle, marginBottom: 20 }]}>
+              <Text style={[mmSt.sectionLabel, { color: t.text.muted }]}>Connections</Text>
+              {connections.map((c, i) => (
+                <View key={c.id} style={[sheetSt.connRow, i > 0 && { borderTopWidth: 1, borderTopColor: t.border.subtle }]}>
+                  <View style={[sheetSt.connDir, {
+                    backgroundColor: c.direction === 'out'
+                      ? (isDark ? 'rgba(251,191,36,0.15)' : 'rgba(217,119,6,0.1)')
+                      : (isDark ? 'rgba(196,181,253,0.15)' : 'rgba(124,58,237,0.1)'),
+                  }]}>
+                    <Text style={[sheetSt.connDirText, {
+                      color: c.direction === 'out' ? (isDark ? '#fbbf24' : '#d97706') : (isDark ? '#c4b5fd' : '#7c3aed'),
+                    }]}>{c.direction === 'out' ? 'OUT' : 'IN'}</Text>
+                  </View>
+                  <Text style={[sheetSt.connLabel, { color: t.text.secondary }]} numberOfLines={1}>
+                    {c.label}
+                  </Text>
+                  <View style={[sheetSt.connStr, { backgroundColor: t.background.input }]}>
+                    <Text style={[sheetSt.connStrText, { color: t.text.muted }]}>{c.strength}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Full content with diagram support */}
+          <View style={[mmSt.attrCard, { backgroundColor: t.background.elevated, borderColor: t.border.subtle }]}>
+            <Text style={[mmSt.sectionLabel, { color: t.text.muted }]}>Content</Text>
+            {node ? (
+              <RichContent text={node.fullText} t={t} isDark={isDark} />
+            ) : null}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
+  );
+}
+const mmSt = StyleSheet.create({
+  header: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    paddingHorizontal: 18, paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth, flexWrap: 'wrap',
+  },
+  title: { flex: 1, fontSize: 18, fontWeight: '800', letterSpacing: -0.3, lineHeight: 24, marginTop: 2 },
+  closeBtn: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center', marginLeft: 4 },
+  closeTxt: { fontSize: 14, fontWeight: '700' },
+  attrCard: {
+    borderRadius: 16, borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6, marginBottom: 16,
+  },
+  sectionLabel: { fontSize: 9, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 12 },
+  attrRow: { flexDirection: 'row', paddingVertical: 10, borderTopWidth: StyleSheet.hairlineWidth, gap: 8 },
+  attrKey: { width: 58, fontSize: 11, fontWeight: '700', flexShrink: 0 },
+  attrVal: { flex: 1, fontSize: 12, lineHeight: 18 },
+});
+
+/* ── Edge detail bottom sheet ─────────────────────────────────────── */
+function EdgeSheet({ edge, allNodes, isDark, t, onClose }: {
+  edge: EdgeData | null; allNodes: SimNode[];
+  isDark: boolean; t: T; onClose: () => void;
+}) {
+  const slideAnim = useRef(new Animated.Value(500)).current;
+  const fadeAnim  = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (edge) {
+      Animated.parallel([
+        Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      ]).start();
+    } else {
+      slideAnim.setValue(500);
+      fadeAnim.setValue(0);
+    }
+  }, [edge, slideAnim, fadeAnim]);
+
+  if (!edge) return null;
+
+  const nc   = getNodeColors(isDark);
+  const src  = allNodes.find(n => n.id === edge.src);
+  const tgt  = allNodes.find(n => n.id === edge.tgt);
+  const srcColors = src?.type === 'memory' ? nc.memory : nc.file;
+  const tgtColors = tgt?.type === 'memory' ? nc.memory : nc.file;
+  const avgStr = edge.count > 1 ? Math.round(edge.totalStr / edge.count) : edge.totalStr;
+  const edgeColor = isDark ? '#6ee7b7' : '#059669';
+
+  return (
+    <Animated.View style={[sheetSt.backdrop, { opacity: fadeAnim }]}>
+      <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
+      <Animated.View style={[sheetSt.container, {
+        backgroundColor: t.background.screen,
+        borderColor: t.border.default,
+        transform: [{ translateY: slideAnim }],
+      }]}>
+        <View style={[sheetSt.handle, { backgroundColor: t.border.default }]} />
+
+        {/* Header row */}
+        <View style={sheetSt.topRow}>
+          <View style={[sheetSt.typePill, { backgroundColor: isDark ? 'rgba(110,231,183,0.15)' : 'rgba(5,150,105,0.1)' }]}>
+            <View style={[sheetSt.typeDot, { backgroundColor: edgeColor }]} />
+            <Text style={[sheetSt.typeLabel, { color: edgeColor }]}>Connection</Text>
+          </View>
+          <View style={{ flex: 1 }} />
+          <TouchableOpacity onPress={onClose}
+            style={[sheetSt.closeBtn, { backgroundColor: t.background.input }]}>
+            <Text style={[sheetSt.closeTxt, { color: t.text.muted }]}>X</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Source → Target */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+          <View style={[sheetSt.typePill, { backgroundColor: srcColors.bg, flex: 1 }]}>
+            <View style={[sheetSt.typeDot, { backgroundColor: srcColors.fill }]} />
+            <Text style={[sheetSt.connLabel, { color: t.text.primary }]} numberOfLines={2}>
+              {src?.label ?? edge.src}
+            </Text>
+          </View>
+          <Text style={{ color: edgeColor, fontSize: 20, fontWeight: '200' }}>{'→'}</Text>
+          <View style={[sheetSt.typePill, { backgroundColor: tgtColors.bg, flex: 1 }]}>
+            <View style={[sheetSt.typeDot, { backgroundColor: tgtColors.fill }]} />
+            <Text style={[sheetSt.connLabel, { color: t.text.primary }]} numberOfLines={2}>
+              {tgt?.label ?? edge.tgt}
+            </Text>
+          </View>
+        </View>
+
+        {/* Stats */}
+        <View style={[sheetSt.statsWrap, { borderColor: t.border.subtle }]}>
+          {[
+            { val: edge.count,  lbl: 'Links',       clr: edgeColor },
+            { val: edge.totalStr, lbl: 'Total Strength', clr: isDark ? '#c4b5fd' : '#7c3aed' },
+            { val: avgStr,      lbl: 'Avg Strength', clr: isDark ? '#fbbf24' : '#d97706' },
+          ].map(s => (
+            <View key={s.lbl} style={sheetSt.statCell}>
+              <Text style={[sheetSt.statVal, { color: s.clr }]}>{s.val}</Text>
+              <Text style={[sheetSt.statLbl, { color: t.text.muted }]}>{s.lbl}</Text>
+            </View>
+          ))}
+        </View>
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
+/* ── Force Graph Canvas — Blueprint / Architectural Style ─────────── */
+function ForceGraph({ simNodes, links, selectedId, onNodeTap, onEdgeTap, onBgTap, isDark, filterType }: {
   simNodes: SimNode[];
   links: GraphLink[];
   selectedId: string | null;
   onNodeTap: (n: SimNode) => void;
+  onEdgeTap: (e: EdgeData) => void;
   onBgTap: () => void;
   isDark: boolean;
+  filterType: FilterType;
 }) {
   const nc = getNodeColors(isDark);
   const edgePalette = isDark ? EDGE_PALETTE_DARK : EDGE_PALETTE_LIGHT;
@@ -415,6 +725,20 @@ function ForceGraph({ simNodes, links, selectedId, onNodeTap, onBgTap, isDark }:
   const lastPanPos = useRef<{ x: number; y: number } | null>(null);
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
+
+  // Ref so panResponder can access latest renderEdges without re-creating
+  const renderEdgesRef = useRef<EdgeData[]>([]);
+
+  // Blueprint grid colors
+  const gridColor = isDark ? 'rgba(100,120,180,0.06)' : 'rgba(80,100,160,0.05)';
+  const gridMajor = isDark ? 'rgba(100,120,180,0.12)' : 'rgba(80,100,160,0.09)';
+
+  // Node card dimensions — blueprint style
+  const NODE_W        = 128;  // all nodes same width
+  const NODE_H        = 44;   // file / answer height
+  const NODE_MEM_H    = 82;   // memory height (shows 3-line text preview)
+  const NODE_HEADER_H = 18;
+  const getH = (n: SimNode) => n.type === 'memory' ? NODE_MEM_H : NODE_H;
 
   function pDist(touches: any[]): number {
     const dx = touches[1].pageX - touches[0].pageX;
@@ -475,17 +799,55 @@ function ForceGraph({ simNodes, links, selectedId, onNodeTap, onBgTap, isDark }:
           let hit: SimNode | null = null;
           let best = 999;
           simNodes.forEach(n => {
-            const d = Math.sqrt((n.x - gx) ** 2 + (n.y - gy) ** 2);
-            if (d < n.radius + 20 && d < best) { best = d; hit = n; }
+            // Hit test against rectangular node card
+            const nh = getH(n);
+            const hw = NODE_W / 2 + 12;
+            const hh = nh / 2 + 12;
+            if (Math.abs(n.x - gx) < hw && Math.abs(n.y - gy) < hh) {
+              const d = Math.sqrt((n.x - gx) ** 2 + (n.y - gy) ** 2);
+              if (d < best) { best = d; hit = n; }
+            }
           });
-          if (hit) onNodeTap(hit); else onBgTap();
+          if (hit) {
+            onNodeTap(hit);
+          } else {
+            // Edge hit detection — find nearest edge within 20px
+            let edgeHit: EdgeData | null = null;
+            let edgeBest = 999;
+            renderEdgesRef.current.forEach(edge => {
+              const src = simNodes.find(n => n.id === edge.src);
+              const tgt = simNodes.find(n => n.id === edge.tgt);
+              if (!src || !tgt) return;
+              const dx = tgt.x - src.x;
+              const dy = tgt.y - src.y;
+              const angle = Math.atan2(dy, dx);
+              const halfW = NODE_W / 2; const halfH = getH(src) / 2;
+              const tgtHalfH = getH(tgt!) / 2;
+              const sx = Math.abs(Math.cos(angle)) * halfW > Math.abs(Math.sin(angle)) * halfH
+                ? src.x + Math.sign(Math.cos(angle)) * halfW
+                : src.x + (Math.sign(Math.sin(angle)) * halfH) / Math.tan(angle);
+              const sy = Math.abs(Math.cos(angle)) * halfW > Math.abs(Math.sin(angle)) * halfH
+                ? src.y + (Math.sign(Math.cos(angle)) * halfW) * Math.tan(angle)
+                : src.y + Math.sign(Math.sin(angle)) * halfH;
+              const tx = Math.abs(Math.cos(angle)) * halfW > Math.abs(Math.sin(angle)) * tgtHalfH
+                ? tgt!.x - Math.sign(Math.cos(angle)) * halfW
+                : tgt!.x - (Math.sign(Math.sin(angle)) * tgtHalfH) / Math.tan(angle);
+              const ty = Math.abs(Math.cos(angle)) * halfW > Math.abs(Math.sin(angle)) * tgtHalfH
+                ? tgt!.y - (Math.sign(Math.cos(angle)) * halfW) * Math.tan(angle)
+                : tgt!.y - Math.sign(Math.sin(angle)) * tgtHalfH;
+              const d = distToSegment(gx, gy, sx, sy, tx, ty);
+              if (d < 20 && d < edgeBest) { edgeBest = d; edgeHit = edge; }
+            });
+            if (edgeHit) onEdgeTap(edgeHit);
+            else onBgTap();
+          }
         }
       }
       lastPanPos.current = null;
       lastPinchDist.current = null;
       touchStartRef.current = null;
     },
-  }), [simNodes, onNodeTap, onBgTap]);
+  }), [simNodes, onNodeTap, onEdgeTap, onBgTap]);
 
   const maxStr = useMemo(() => Math.max(1, ...links.filter(l => l.source !== l.target).map(l => l.strength)), [links]);
 
@@ -502,7 +864,7 @@ function ForceGraph({ simNodes, links, selectedId, onNodeTap, onBgTap, isDark }:
 
   // Dedupe edges for rendering (combine A->B and B->A, skip self)
   const renderEdges = useMemo(() => {
-    const edgeMap = new Map<string, { src: string; tgt: string; totalStr: number; count: number }>();
+    const edgeMap = new Map<string, EdgeData>();
     links.forEach(l => {
       if (l.source === l.target) return;
       const key = [l.source, l.target].sort().join('|');
@@ -516,13 +878,40 @@ function ForceGraph({ simNodes, links, selectedId, onNodeTap, onBgTap, isDark }:
     });
     return Array.from(edgeMap.values());
   }, [links]);
+  // Keep ref in sync so panResponder can access without re-creating
+  renderEdgesRef.current = renderEdges;
+
+  // Generate grid lines
+  const gridLines = useMemo(() => {
+    const lines: React.ReactNode[] = [];
+    const step = 40;
+    const majorStep = step * 4;
+    for (let x = 0; x <= GRAPH_W + 200; x += step) {
+      const isMajor = x % majorStep === 0;
+      lines.push(
+        <Line key={`gx-${x}`} x1={x} y1={-200} x2={x} y2={GRAPH_H + 200}
+          stroke={isMajor ? gridMajor : gridColor} strokeWidth={isMajor ? 0.8 : 0.4} />,
+      );
+    }
+    for (let y = 0; y <= GRAPH_H + 200; y += step) {
+      const isMajor = y % majorStep === 0;
+      lines.push(
+        <Line key={`gy-${y}`} x1={-200} y1={y} x2={GRAPH_W + 200} y2={y}
+          stroke={isMajor ? gridMajor : gridColor} strokeWidth={isMajor ? 0.8 : 0.4} />,
+      );
+    }
+    return lines;
+  }, [gridColor, gridMajor]);
 
   return (
     <View style={{ flex: 1, overflow: 'hidden' }} {...panResponder.panHandlers}>
       <Svg width={GRAPH_W} height={GRAPH_H}>
         <G transform={`translate(${transform.x}, ${transform.y}) scale(${transform.scale})`}>
 
-          {/* ── Edges (curved colored lines) ── */}
+          {/* ── Blueprint grid ── */}
+          {gridLines}
+
+          {/* ── Edges (straight structural lines with endpoint dots) ── */}
           {renderEdges.map((edge, i) => {
             const src = simNodes.find(n => n.id === edge.src);
             const tgt = simNodes.find(n => n.id === edge.tgt);
@@ -532,43 +921,66 @@ function ForceGraph({ simNodes, links, selectedId, onNodeTap, onBgTap, isDark }:
               edge.src === selectedId || edge.tgt === selectedId;
             const normStr = edge.totalStr / maxStr;
             const strokeW = isConnected
-              ? 1 + normStr * 2.5
+              ? 1.2 + normStr * 2
               : 0.5;
-            const opacity = isConnected ? 0.4 + normStr * 0.5 : 0.08;
+            const opacity = isConnected ? 0.5 + normStr * 0.4 : 0.06;
             const color = edgePalette[i % edgePalette.length];
-            const dimColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+            const dimColor = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)';
 
-            // Curve offset based on index for visual variety
-            const curveAmt = 15 + (i % 4) * 8;
-            const curveDir = i % 2 === 0 ? 1 : -1;
-            const offset = curveAmt * curveDir;
+            // Calculate connection points — edge of the rectangular cards
+            const dx = tgt.x - src.x;
+            const dy = tgt.y - src.y;
+            const angle = Math.atan2(dy, dx);
+            const srcHH = getH(src) / 2;
+            const tgtHH = getH(tgt) / 2;
+            // Source exit point
+            const srcEx = Math.abs(Math.cos(angle)) * NODE_W/2 > Math.abs(Math.sin(angle)) * srcHH
+              ? { x: src.x + Math.sign(Math.cos(angle)) * NODE_W/2, y: src.y + (Math.sign(Math.cos(angle)) * NODE_W/2) * Math.tan(angle) }
+              : { x: src.x + (Math.sign(Math.sin(angle)) * srcHH) / Math.tan(angle), y: src.y + Math.sign(Math.sin(angle)) * srcHH };
+            // Target entry point
+            const tgtEx = Math.abs(Math.cos(angle)) * NODE_W/2 > Math.abs(Math.sin(angle)) * tgtHH
+              ? { x: tgt.x - Math.sign(Math.cos(angle)) * NODE_W/2, y: tgt.y - (Math.sign(Math.cos(angle)) * NODE_W/2) * Math.tan(angle) }
+              : { x: tgt.x - (Math.sign(Math.sin(angle)) * tgtHH) / Math.tan(angle), y: tgt.y - Math.sign(Math.sin(angle)) * tgtHH };
 
-            const pathD = curvedEdgePath(src.x, src.y, tgt.x, tgt.y, offset);
-            const mid = bezierMidpoint(src.x, src.y, tgt.x, tgt.y, offset);
+            const midX = (srcEx.x + tgtEx.x) / 2;
+            const midY = (srcEx.y + tgtEx.y) / 2;
 
             return (
               <G key={`edge-${i}`}>
-                <Path
-                  d={pathD}
+                {/* Main connector line */}
+                <Line
+                  x1={srcEx.x} y1={srcEx.y}
+                  x2={tgtEx.x} y2={tgtEx.y}
                   stroke={isConnected ? color : dimColor}
                   strokeWidth={strokeW}
                   strokeOpacity={opacity}
-                  fill="none"
                   strokeLinecap="round"
                 />
+                {/* Connection dots at endpoints */}
+                {isConnected && (
+                  <>
+                    <Circle cx={srcEx.x} cy={srcEx.y} r={2.5}
+                      fill={color} fillOpacity={opacity} />
+                    <Circle cx={tgtEx.x} cy={tgtEx.y} r={2.5}
+                      fill={color} fillOpacity={opacity} />
+                  </>
+                )}
                 {/* Strength label on edge */}
                 {isConnected && edge.totalStr > 2 && (
                   <>
                     <Rect
-                      x={mid.x - 10} y={mid.y - 7}
-                      width={20} height={14}
+                      x={midX - 12} y={midY - 8}
+                      width={24} height={16}
                       rx={4}
-                      fill={isDark ? 'rgba(10,10,15,0.85)' : 'rgba(255,255,255,0.9)'}
+                      fill={isDark ? 'rgba(10,10,20,0.92)' : 'rgba(255,255,255,0.95)'}
+                      stroke={isConnected ? color : 'transparent'}
+                      strokeWidth={0.5}
+                      strokeOpacity={0.4}
                     />
                     <SvgText
-                      x={mid.x} y={mid.y + 3.5}
+                      x={midX} y={midY + 4}
                       textAnchor="middle"
-                      fontSize={7.5}
+                      fontSize={8}
                       fontWeight="700"
                       fill={isConnected ? color : (isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)')}
                     >
@@ -580,75 +992,122 @@ function ForceGraph({ simNodes, links, selectedId, onNodeTap, onBgTap, isDark }:
             );
           })}
 
-          {/* ── Nodes (large colored circles with type letter) ── */}
+          {/* ── Nodes (rectangular blueprint cards) ── */}
           {simNodes.map(node => {
             const nodeType = node.type === 'memory' ? 'memory' : node.type === 'file' ? 'file' : 'answer';
             const colors = nc[nodeType];
             const isSelected = node.id === selectedId;
-            const isDimmed = selectedId != null && !(connectedIds?.has(node.id));
-            const r = node.radius;
+            const isFilterDimmed = filterType !== 'all' && node.type !== filterType;
+            const isDimmed = isFilterDimmed || (selectedId != null && !(connectedIds?.has(node.id)));
+            const isMem = nodeType === 'memory';
 
-            // Type letter inside node
-            const typeLetter = nodeType === 'memory' ? 'M' : nodeType === 'file' ? 'F' : 'A';
+            const typeLabel = isMem ? 'MEM' : nodeType === 'file' ? 'FILE' : 'ANS';
+            const nodeH = getH(node);
+            const x = node.x - NODE_W / 2;
+            const y = node.y - nodeH / 2;
+
+            const cardBg = isDimmed
+              ? (isDark ? 'rgba(20,20,30,0.4)' : 'rgba(240,240,250,0.5)')
+              : (isDark ? 'rgba(15,15,25,0.92)' : 'rgba(255,255,255,0.96)');
+            const borderClr = isDimmed
+              ? (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)')
+              : (isSelected ? colors.fill : (isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'));
+
+            // For memory nodes: split label across up to 2 lines (12 chars/line)
+            const labelLine1 = isMem ? truncLabel(node.label, 18) : truncLabel(node.label, 14);
+            const labelLine2 = isMem && node.label.length > 18 ? truncLabel(node.label.slice(18), 18) : null;
+            // 3-line text preview for memory nodes (10 chars/line in SVG font)
+            const preview1 = isMem ? truncLabel(node.fullText, 22) : null;
+            const preview2 = isMem && node.fullText.length > 22 ? truncLabel(node.fullText.slice(22), 22) : null;
+            const preview3 = isMem && node.fullText.length > 44 ? truncLabel(node.fullText.slice(44), 22) : null;
 
             return (
               <G key={node.id}>
-                {/* Selection outer glow */}
+                {/* Selection highlight glow */}
                 {isSelected && (
-                  <>
-                    <Circle cx={node.x} cy={node.y} r={r + 14}
-                      fill={colors.fill} fillOpacity={0.06} />
-                    <Circle cx={node.x} cy={node.y} r={r + 8}
-                      fill="none" stroke={colors.fill} strokeWidth={1.5}
-                      strokeOpacity={0.3} strokeDasharray="4,3" />
-                  </>
-                )}
-
-                {/* Outer ring */}
-                <Circle cx={node.x} cy={node.y} r={r + 2}
-                  fill="none"
-                  stroke={isDimmed ? (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)') : colors.ring}
-                  strokeWidth={isDimmed ? 0.5 : 1.5}
-                  strokeOpacity={isDimmed ? 0.3 : 0.6}
-                />
-
-                {/* Main filled circle */}
-                <Circle cx={node.x} cy={node.y} r={r}
-                  fill={isDimmed ? (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)') : colors.fill}
-                  fillOpacity={isDimmed ? 0.5 : 0.92}
-                />
-
-                {/* Highlight arc (top) for 3D feel */}
-                {!isDimmed && (
-                  <Circle cx={node.x} cy={node.y - r * 0.2} r={r * 0.55}
-                    fill="white" fillOpacity={0.12}
+                  <Rect
+                    x={x - 4} y={y - 4}
+                    width={NODE_W + 8} height={nodeH + 8}
+                    rx={8}
+                    fill="none" stroke={colors.fill}
+                    strokeWidth={1.5} strokeOpacity={0.3}
+                    strokeDasharray="4,3"
                   />
                 )}
 
-                {/* Type letter */}
-                <SvgText
-                  x={node.x} y={node.y + (r * 0.32)}
-                  textAnchor="middle"
-                  fontSize={r * 0.7}
-                  fontWeight="800"
-                  fill={isDimmed ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)') : colors.text}
-                  letterSpacing={0.5}
-                >
-                  {typeLetter}
+                {/* Card body */}
+                <Rect x={x} y={y} width={NODE_W} height={nodeH} rx={6}
+                  fill={cardBg} stroke={borderClr} strokeWidth={isSelected ? 1.5 : 0.8} />
+
+                {/* Header bar */}
+                <Rect x={x} y={y} width={NODE_W} height={NODE_HEADER_H} rx={6}
+                  fill={isDimmed ? (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)') : colors.fill}
+                  fillOpacity={isDimmed ? 0.3 : 0.85} />
+                <Rect x={x} y={y + 6} width={NODE_W} height={NODE_HEADER_H - 6}
+                  fill={isDimmed ? (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)') : colors.fill}
+                  fillOpacity={isDimmed ? 0.3 : 0.85} />
+
+                {/* Type label in header */}
+                <SvgText x={x + 8} y={y + NODE_HEADER_H - 4}
+                  fontSize={7.5} fontWeight="800" letterSpacing={1}
+                  fill={isDimmed ? (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)') : colors.text}>
+                  {typeLabel}
                 </SvgText>
 
-                {/* Node label below */}
-                <SvgText
-                  x={node.x} y={node.y + r + 15}
-                  textAnchor="middle"
-                  fontSize={9}
-                  fontWeight="600"
-                  fill={isDimmed
-                    ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)')
-                    : colors.label}
-                >
-                  {truncLabel(node.label, 20)}
+                {/* Weight badge in header */}
+                <SvgText x={x + NODE_W - 8} y={y + NODE_HEADER_H - 4}
+                  textAnchor="end" fontSize={7} fontWeight="700"
+                  fill={isDimmed ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)') : (isDark ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.8)')}>
+                  w:{node.val}
                 </SvgText>
+
+                {isMem ? (
+                  /* Memory node: 2-line label + divider + 3-line text preview */
+                  <>
+                    <SvgText x={x + NODE_W / 2} y={y + NODE_HEADER_H + 12}
+                      textAnchor="middle" fontSize={9} fontWeight="700"
+                      fill={isDimmed ? (isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.1)') : colors.label}>
+                      {labelLine1}
+                    </SvgText>
+                    {labelLine2 && (
+                      <SvgText x={x + NODE_W / 2} y={y + NODE_HEADER_H + 22}
+                        textAnchor="middle" fontSize={9} fontWeight="700"
+                        fill={isDimmed ? (isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.1)') : colors.label}>
+                        {labelLine2}
+                      </SvgText>
+                    )}
+                    {/* Hairline divider */}
+                    <Line x1={x + 8} y1={y + NODE_HEADER_H + (labelLine2 ? 28 : 17)}
+                      x2={x + NODE_W - 8} y2={y + NODE_HEADER_H + (labelLine2 ? 28 : 17)}
+                      stroke={isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'} strokeWidth={0.5} />
+                    {/* Text preview lines */}
+                    {preview1 && (
+                      <SvgText x={x + 8} y={y + NODE_HEADER_H + (labelLine2 ? 38 : 27)}
+                        fontSize={7.5} fill={isDimmed ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)') : (isDark ? 'rgba(255,255,255,0.45)' : 'rgba(40,40,60,0.5)')}>
+                        {preview1}
+                      </SvgText>
+                    )}
+                    {preview2 && (
+                      <SvgText x={x + 8} y={y + NODE_HEADER_H + (labelLine2 ? 48 : 37)}
+                        fontSize={7.5} fill={isDimmed ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)') : (isDark ? 'rgba(255,255,255,0.4)' : 'rgba(40,40,60,0.45)')}>
+                        {preview2}
+                      </SvgText>
+                    )}
+                    {preview3 && (
+                      <SvgText x={x + 8} y={y + NODE_HEADER_H + (labelLine2 ? 58 : 47)}
+                        fontSize={7.5} fill={isDimmed ? (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)') : (isDark ? 'rgba(255,255,255,0.32)' : 'rgba(40,40,60,0.38)')}>
+                        {preview3}
+                      </SvgText>
+                    )}
+                  </>
+                ) : (
+                  /* File / Answer node: single centered label */
+                  <SvgText x={x + NODE_W / 2} y={y + NODE_HEADER_H + (NODE_H - NODE_HEADER_H) / 2 + 4}
+                    textAnchor="middle" fontSize={9} fontWeight="600"
+                    fill={isDimmed ? (isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)') : colors.label}>
+                    {truncLabel(node.label, 16)}
+                  </SvgText>
+                )}
               </G>
             );
           })}
@@ -666,14 +1125,15 @@ function GraphLegend({ memCount, fileCount, linkCount, isDark, t }: {
   return (
     <View style={[lgSt.wrap, { backgroundColor: (isDark ? 'rgba(10,10,15,0.9)' : 'rgba(255,255,255,0.92)'), borderColor: t.border.subtle }]}>
       {[
-        { color: nc.memory.fill, letter: 'M', label: `${memCount} memories` },
-        { color: nc.file.fill, letter: 'F', label: `${fileCount} files` },
+        { color: nc.memory.fill, letter: 'MEM', label: `${memCount} memories` },
+        { color: nc.file.fill, letter: 'FILE', label: `${fileCount} files` },
         { color: isDark ? 'rgba(196,181,253,0.5)' : 'rgba(124,58,237,0.4)', letter: null, label: `${linkCount} links` },
       ].map((item, i) => (
         <View key={i} style={lgSt.item}>
           {item.letter ? (
-            <View style={[lgSt.legendCircle, { backgroundColor: item.color }]}>
-              <Text style={lgSt.legendLetter}>{item.letter}</Text>
+            <View style={[lgSt.legendRect, { backgroundColor: isDark ? 'rgba(15,15,25,0.9)' : '#fff', borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)' }]}>
+              <View style={[lgSt.legendRectHeader, { backgroundColor: item.color }]} />
+              <Text style={lgSt.legendRectLetter}>{item.letter[0]}</Text>
             </View>
           ) : (
             <View style={[lgSt.legendLine, { backgroundColor: item.color }]} />
@@ -687,11 +1147,12 @@ function GraphLegend({ memCount, fileCount, linkCount, isDark, t }: {
 const lgSt = StyleSheet.create({
   wrap: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
-    borderRadius: 14, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 8,
+    borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingVertical: 9,
   },
   item: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  legendCircle: { width: 16, height: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  legendLetter: { fontSize: 8, fontWeight: '800', color: '#fff' },
+  legendRect: { width: 20, height: 16, borderRadius: 3, borderWidth: 0.6, overflow: 'hidden', alignItems: 'center', justifyContent: 'flex-end' },
+  legendRectHeader: { position: 'absolute', top: 0, left: 0, right: 0, height: 7, borderTopLeftRadius: 3, borderTopRightRadius: 3 },
+  legendRectLetter: { fontSize: 7, fontWeight: '800', color: 'rgba(255,255,255,0.7)', marginTop: 2 },
   legendLine: { width: 14, height: 2, borderRadius: 1 },
   label: { fontSize: 10, fontWeight: '600' },
 });
@@ -721,12 +1182,12 @@ function StatsBar({ nodes, links, isDark, t }: {
 }
 const sbSt = StyleSheet.create({
   wrap: {
-    flexDirection: 'row', borderRadius: 12, borderWidth: 1,
-    paddingVertical: 6, paddingHorizontal: 12, gap: 6,
+    flexDirection: 'row', borderRadius: 16, borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 8, paddingHorizontal: 14, gap: 6,
   },
   cell: { flex: 1, alignItems: 'center' },
   val: { fontSize: 13, fontWeight: '800' },
-  lbl: { fontSize: 8, fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 1 },
+  lbl: { fontSize: 8, fontWeight: '600', letterSpacing: 0.6, textTransform: 'uppercase', marginTop: 2 },
 });
 
 /* ── Main Screen ─────────────────────────────────────────────────────── */
@@ -742,6 +1203,9 @@ export default function NeuralGraphScreen({ onBack }: NeuralGraphScreenProps) {
   const [simNodes, setSimNodes] = useState<SimNode[]>([]);
   const [links, setLinks] = useState<GraphLink[]>([]);
   const [selectedNode, setSelectedNode] = useState<SimNode | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<EdgeData | null>(null);
+  const [selectedMemory, setSelectedMemory] = useState<SimNode | null>(null);
+  const [filterType, setFilterType] = useState<FilterType>('all');
   const [hasResult, setHasResult] = useState(false);
   const graphFade = useRef(new Animated.Value(0)).current;
 
@@ -749,18 +1213,27 @@ export default function NeuralGraphScreen({ onBack }: NeuralGraphScreenProps) {
     setLoading(true);
     setErrorMsg('');
     setSelectedNode(null);
+    setSelectedEdge(null);
+    setSelectedMemory(null);
+    setFilterType('all');
     setHasResult(false);
     graphFade.setValue(0);
     try {
       const res = await getGraph();
-      const nodes = runForceSimulation(res.data.nodes, res.data.links, GRAPH_W, GRAPH_H);
-      setSimNodes(nodes);
-      setLinks(res.data.links);
-      setHasResult(true);
-      Animated.timing(graphFade, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+      const rawNodes = res.data.nodes;
+      const rawLinks = res.data.links;
+      // Defer simulation to next tick — keeps loading spinner visible while
+      // the JS thread runs the layout algorithm (faster perceived response)
+      setTimeout(() => {
+        const nodes = runForceSimulation(rawNodes, rawLinks, GRAPH_W, GRAPH_H);
+        setSimNodes(nodes);
+        setLinks(rawLinks);
+        setHasResult(true);
+        setLoading(false);
+        Animated.timing(graphFade, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+      }, 30);
     } catch (e: any) {
       setErrorMsg(e?.message ?? 'Failed to load neural graph.');
-    } finally {
       setLoading(false);
     }
   }, [graphFade]);
@@ -775,8 +1248,16 @@ export default function NeuralGraphScreen({ onBack }: NeuralGraphScreenProps) {
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: t.border.subtle }]}>
         <TouchableOpacity
-          style={[styles.backBtn, { backgroundColor: t.background.surface, borderColor: t.border.default }]}
-          onPress={onBack} activeOpacity={0.8}>
+          style={[styles.backBtn, {
+            backgroundColor: t.background.elevated,
+            ...Platform.select({
+              ios: { shadowColor: t.shadow.card.color, shadowOffset: { width: 0, height: 1 }, shadowOpacity: t.shadow.card.opacity * 0.5, shadowRadius: 3 },
+              android: { elevation: 2 },
+            }),
+          }]}
+          onPress={onBack}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          activeOpacity={0.75}>
           <Text style={[styles.backIcon, { color: t.text.primary }]}>{'<-'}</Text>
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
@@ -797,20 +1278,47 @@ export default function NeuralGraphScreen({ onBack }: NeuralGraphScreenProps) {
       <View style={[styles.canvas, { backgroundColor: t.background.screen }]}>
         {!hasResult ? (
           <View style={styles.emptyWrap}>
-            {/* Mini graph illustration */}
-            <View style={{ width: 130, height: 100, marginBottom: 28 }}>
-              <Svg width={130} height={100}>
-                {/* Demo edges */}
-                <Path d="M30,30 Q65,10 100,35" stroke={isDark ? 'rgba(196,181,253,0.3)' : 'rgba(124,58,237,0.2)'} strokeWidth={1.5} fill="none" />
-                <Path d="M30,30 Q40,65 65,70" stroke={isDark ? 'rgba(244,114,182,0.3)' : 'rgba(219,39,119,0.2)'} strokeWidth={1.5} fill="none" />
-                <Path d="M100,35 Q90,60 65,70" stroke={isDark ? 'rgba(110,231,183,0.3)' : 'rgba(5,150,105,0.2)'} strokeWidth={1.5} fill="none" />
-                {/* Demo nodes */}
-                <Circle cx={30} cy={30} r={14} fill={isDark ? '#c084fc' : '#a855f7'} fillOpacity={0.85} />
-                <SvgText x={30} y={34} textAnchor="middle" fontSize={10} fontWeight="800" fill="#fff">M</SvgText>
-                <Circle cx={100} cy={35} r={12} fill={isDark ? '#fbbf24' : '#f59e0b'} fillOpacity={0.85} />
-                <SvgText x={100} y={39} textAnchor="middle" fontSize={9} fontWeight="800" fill={isDark ? '#1c1917' : '#fff'}>F</SvgText>
-                <Circle cx={65} cy={70} r={12} fill={isDark ? '#6ee7b7' : '#34d399'} fillOpacity={0.85} />
-                <SvgText x={65} y={74} textAnchor="middle" fontSize={9} fontWeight="800" fill={isDark ? '#1c1917' : '#fff'}>A</SvgText>
+            {/* Blueprint diagram illustration */}
+            <View style={{ width: 160, height: 110, marginBottom: 28 }}>
+              <Svg width={160} height={110}>
+                {/* Mini grid */}
+                {[0, 40, 80, 120, 160].map(x => (
+                  <Line key={`gx-${x}`} x1={x} y1={0} x2={x} y2={110}
+                    stroke={isDark ? 'rgba(100,120,180,0.08)' : 'rgba(80,100,160,0.06)'} strokeWidth={0.5} />
+                ))}
+                {[0, 40, 80].map(y => (
+                  <Line key={`gy-${y}`} x1={0} y1={y} x2={160} y2={y}
+                    stroke={isDark ? 'rgba(100,120,180,0.08)' : 'rgba(80,100,160,0.06)'} strokeWidth={0.5} />
+                ))}
+                {/* Demo connector lines */}
+                <Line x1={55} y1={28} x2={105} y2={28} stroke={isDark ? 'rgba(196,181,253,0.4)' : 'rgba(124,58,237,0.3)'} strokeWidth={1.2} />
+                <Line x1={55} y1={28} x2={80} y2={78} stroke={isDark ? 'rgba(244,114,182,0.4)' : 'rgba(219,39,119,0.3)'} strokeWidth={1.2} />
+                <Line x1={130} y1={28} x2={105} y2={78} stroke={isDark ? 'rgba(110,231,183,0.4)' : 'rgba(5,150,105,0.3)'} strokeWidth={1.2} />
+                {/* Node 1 — Memory card */}
+                <Rect x={5} y={12} width={50} height={32} rx={4} fill={isDark ? 'rgba(15,15,25,0.9)' : '#fff'}
+                  stroke={isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'} strokeWidth={0.8} />
+                <Rect x={5} y={12} width={50} height={12} rx={4} fill={isDark ? '#c084fc' : '#a855f7'} fillOpacity={0.85} />
+                <Rect x={5} y={18} width={50} height={6} fill={isDark ? '#c084fc' : '#a855f7'} fillOpacity={0.85} />
+                <SvgText x={10} y={21} fontSize={6} fontWeight="800" fill="#fff">MEM</SvgText>
+                <SvgText x={30} y={38} textAnchor="middle" fontSize={7} fontWeight="600" fill={isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'}>node_a</SvgText>
+                {/* Node 2 — File card */}
+                <Rect x={105} y={12} width={50} height={32} rx={4} fill={isDark ? 'rgba(15,15,25,0.9)' : '#fff'}
+                  stroke={isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'} strokeWidth={0.8} />
+                <Rect x={105} y={12} width={50} height={12} rx={4} fill={isDark ? '#fbbf24' : '#f59e0b'} fillOpacity={0.85} />
+                <Rect x={105} y={18} width={50} height={6} fill={isDark ? '#fbbf24' : '#f59e0b'} fillOpacity={0.85} />
+                <SvgText x={110} y={21} fontSize={6} fontWeight="800" fill={isDark ? '#1c1917' : '#fff'}>FILE</SvgText>
+                <SvgText x={130} y={38} textAnchor="middle" fontSize={7} fontWeight="600" fill={isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'}>node_b</SvgText>
+                {/* Node 3 — Answer card */}
+                <Rect x={55} y={62} width={50} height={32} rx={4} fill={isDark ? 'rgba(15,15,25,0.9)' : '#fff'}
+                  stroke={isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'} strokeWidth={0.8} />
+                <Rect x={55} y={62} width={50} height={12} rx={4} fill={isDark ? '#6ee7b7' : '#34d399'} fillOpacity={0.85} />
+                <Rect x={55} y={68} width={50} height={6} fill={isDark ? '#6ee7b7' : '#34d399'} fillOpacity={0.85} />
+                <SvgText x={60} y={71} fontSize={6} fontWeight="800" fill={isDark ? '#1c1917' : '#fff'}>ANS</SvgText>
+                <SvgText x={80} y={88} textAnchor="middle" fontSize={7} fontWeight="600" fill={isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'}>node_c</SvgText>
+                {/* Endpoint dots */}
+                <Circle cx={55} cy={28} r={2} fill={isDark ? 'rgba(196,181,253,0.6)' : 'rgba(124,58,237,0.5)'} />
+                <Circle cx={105} cy={28} r={2} fill={isDark ? 'rgba(196,181,253,0.6)' : 'rgba(124,58,237,0.5)'} />
+                <Circle cx={80} cy={78} r={2} fill={isDark ? 'rgba(244,114,182,0.6)' : 'rgba(219,39,119,0.5)'} />
               </Svg>
             </View>
             <Text style={[styles.emptyTitle, { color: t.text.primary }]}>Neural Graph</Text>
@@ -824,9 +1332,20 @@ export default function NeuralGraphScreen({ onBack }: NeuralGraphScreenProps) {
               simNodes={simNodes}
               links={links}
               selectedId={selectedNode?.id ?? null}
-              onNodeTap={setSelectedNode}
-              onBgTap={() => setSelectedNode(null)}
+              onNodeTap={n => {
+                setSelectedEdge(null);
+                if (n.type === 'memory') {
+                  setSelectedNode(null);
+                  setSelectedMemory(n);
+                } else {
+                  setSelectedMemory(null);
+                  setSelectedNode(n);
+                }
+              }}
+              onEdgeTap={e => { setSelectedNode(null); setSelectedEdge(e); }}
+              onBgTap={() => { setSelectedNode(null); setSelectedEdge(null); }}
               isDark={isDark}
+              filterType={filterType}
             />
           </Animated.View>
         )}
@@ -844,16 +1363,18 @@ export default function NeuralGraphScreen({ onBack }: NeuralGraphScreenProps) {
         )}
 
         {/* Legend (top) */}
-        {hasResult && !selectedNode && (
-          <View style={styles.legendPos} pointerEvents="none">
+        {hasResult && !selectedNode && !selectedEdge && (
+          <View style={styles.legendPos}>
             <GraphLegend memCount={memCount} fileCount={fileCount}
               linkCount={links.filter(l => l.source !== l.target).length}
-              isDark={isDark} t={t} />
+              isDark={isDark} t={t}
+              activeFilter={filterType}
+              onTypeFilter={setFilterType} />
           </View>
         )}
 
         {/* Stats bar (bottom) */}
-        {hasResult && !selectedNode && (
+        {hasResult && !selectedNode && !selectedEdge && (
           <View style={styles.statsPos} pointerEvents="none">
             <StatsBar nodes={simNodes} links={links} isDark={isDark} t={t} />
           </View>
@@ -867,8 +1388,25 @@ export default function NeuralGraphScreen({ onBack }: NeuralGraphScreenProps) {
           onClose={() => setSelectedNode(null)} />
       )}
 
+      {/* Memory full-detail modal */}
+      <MemoryModal
+        node={selectedMemory}
+        links={links}
+        allNodes={simNodes}
+        t={t}
+        isDark={isDark}
+        onClose={() => setSelectedMemory(null)}
+      />
+
+      {/* Edge detail sheet */}
+      {selectedEdge && (
+        <EdgeSheet edge={selectedEdge} allNodes={simNodes}
+          isDark={isDark} t={t}
+          onClose={() => setSelectedEdge(null)} />
+      )}
+
       {/* FAB */}
-      {!selectedNode && (
+      {!selectedNode && !selectedEdge && (
         <View style={styles.fabWrap}>
           {errorMsg !== '' && (
             <Text style={[styles.errorText, { color: t.status.error }]}>{errorMsg}</Text>
@@ -897,47 +1435,47 @@ export default function NeuralGraphScreen({ onBack }: NeuralGraphScreenProps) {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   header: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16,
-    paddingVertical: 10, borderBottomWidth: 1, gap: 12,
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18,
+    paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, gap: 12,
   },
   backBtn: {
-    width: 38, height: 38, borderRadius: 10, borderWidth: 1,
+    width: 40, height: 40, borderRadius: 14,
     alignItems: 'center', justifyContent: 'center',
   },
   backIcon: { fontSize: 16, fontWeight: '600' },
-  title: { fontSize: 17, fontWeight: '800' },
-  subtitle: { fontSize: 10, letterSpacing: 0.8, marginTop: 1 },
+  title: { fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
+  subtitle: { fontSize: 10, letterSpacing: 0.8, marginTop: 2 },
   badge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6,
   },
   badgeDot: { width: 6, height: 6, borderRadius: 3 },
-  badgeText: { fontSize: 11, fontWeight: '600' },
+  badgeText: { fontSize: 11, fontWeight: '600', letterSpacing: 0.2 },
   canvas: { flex: 1 },
 
   emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 48 },
-  emptyTitle: { fontSize: 20, fontWeight: '800', marginBottom: 10, textAlign: 'center' },
-  emptyBody: { fontSize: 14, lineHeight: 21, textAlign: 'center' },
+  emptyTitle: { fontSize: 22, fontWeight: '800', marginBottom: 12, textAlign: 'center', letterSpacing: -0.4 },
+  emptyBody: { fontSize: 14, lineHeight: 22, textAlign: 'center' },
 
   loadingOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
   loadingCard: {
-    borderRadius: 16, borderWidth: 1, padding: 28, alignItems: 'center', gap: 14,
+    borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, padding: 30, alignItems: 'center', gap: 16,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15, shadowRadius: 10, elevation: 10,
   },
-  loadingText: { fontSize: 13, fontWeight: '600' },
+  loadingText: { fontSize: 13, fontWeight: '600', letterSpacing: -0.1 },
 
   legendPos: { position: 'absolute', top: 10, left: 0, right: 0, alignItems: 'center' },
-  statsPos: { position: 'absolute', bottom: 6, left: 16, right: 16, alignItems: 'center' },
+  statsPos: { position: 'absolute', bottom: 6, left: 18, right: 18, alignItems: 'center' },
 
-  fabWrap: { paddingHorizontal: 20, paddingBottom: 10, paddingTop: 6 },
+  fabWrap: { paddingHorizontal: 20, paddingBottom: 12, paddingTop: 6 },
   fab: {
     alignItems: 'center', justifyContent: 'center',
-    borderRadius: 14, paddingVertical: 14,
+    borderRadius: 18, paddingVertical: 16,
     shadowColor: '#8b5cf6', shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3, shadowRadius: 10, elevation: 6,
   },
-  fabText: { fontSize: 15, fontWeight: '700' },
+  fabText: { fontSize: 15, fontWeight: '700', letterSpacing: -0.2 },
   fabRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   errorText: { fontSize: 13, marginBottom: 8, textAlign: 'center' },
 });

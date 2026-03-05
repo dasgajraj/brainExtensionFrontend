@@ -205,10 +205,14 @@ const styles = StyleSheet.create({
   backIconContainer: {
     width: 42,
     height: 42,
-    borderRadius: 12,
-    borderWidth: 1,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
     justifyContent: 'center',
     alignItems: 'center',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3 },
+      android: { elevation: 1 },
+    }),
   },
   backArrow: {
     fontSize: 20,

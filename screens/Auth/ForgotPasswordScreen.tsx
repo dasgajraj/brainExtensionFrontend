@@ -192,13 +192,13 @@ const ForgotPasswordScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   infoBanner: {
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   errorBanner: {
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   successBanner: {
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
   },
 });
 

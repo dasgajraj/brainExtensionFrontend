@@ -13,8 +13,9 @@ import React, {
   useState, useEffect, useRef, useCallback,
 } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, StatusBar,
+  View, Text, StyleSheet, TouchableOpacity, StatusBar, Image,
   ActivityIndicator, Animated, Easing, Dimensions, Platform,
+  Modal, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -26,6 +27,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../redux/RootReducer';
 import { getTokens } from '../../theme/tokens';
 import { getDreams, DreamEntry } from '../../api/brain.api';
+import { markDreamAsSeen } from '../../services/dreamSeen.service';
 import { IconVolume, IconVolumeOff, IconX } from '../../components/ui/Icons';
 
 const { width, height } = Dimensions.get('window');
@@ -53,6 +55,16 @@ const LIGHT_GRADIENTS: [string, string, string][] = [
 ];
 
 const GRADIENTS = DARK_GRADIENTS; // default — overridden per render based on theme
+
+// ─── Background image cycle ───────────────────────────────────────────────────
+const BG_IMAGES = [
+  require('../../assets/1.webp'),
+  require('../../assets/2.webp'),
+  require('../../assets/3.webp'),
+  require('../../assets/4.webp'),
+  require('../../assets/5.webp'),
+  require('../../assets/6.webp'),
+];
 
 const ACCENTS = ['#a78bfa', '#818cf8', '#60a5fa', '#fb923c', '#38bdf8', '#34d399', '#fbbf24'];
 const LIGHT_ACCENTS = ['#7c3aed', '#4f46e5', '#0284c7', '#d97706', '#0369a1', '#059669', '#b45309'];
@@ -164,8 +176,11 @@ interface CardProps {
   bodyFade: Animated.Value;
   cardRef: React.RefObject<View>;
   isDark: boolean;
+  bgIndex: number;
+  onScrollBegin: () => void;
+  onScrollEnd: () => void;
 }
-function DreamCardContent({ dream, accent, gradColors, titleSlide, bodyFade, cardRef, isDark }: CardProps) {
+function DreamCardContent({ dream, accent, gradColors, titleSlide, bodyFade, cardRef, isDark, bgIndex, onScrollBegin, onScrollEnd }: CardProps) {
   const date = (() => {
     try {
       return new Date(dream.date).toLocaleDateString('en-IN', {
@@ -176,12 +191,15 @@ function DreamCardContent({ dream, accent, gradColors, titleSlide, bodyFade, car
 
   return (
     <View style={{ flex: 1 }} ref={cardRef} collapsable={false}>
-      {/* Base gradient */}
-      <LinearGradient
-        colors={gradColors}
+      {/* Blurred image background */}
+      <Image
+        source={BG_IMAGES[bgIndex % BG_IMAGES.length]}
         style={StyleSheet.absoluteFill}
-        start={{ x: 0.3, y: 0 }} end={{ x: 0.7, y: 1 }}
+        blurRadius={0.5}
+        resizeMode="cover"
       />
+      {/* Dark/tint overlay — preserves the dreamy colour palette */}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(6,3,15,0.62)' : 'rgba(245,240,255,0.52)' }]} />
       {/* Top vignette */}
       <LinearGradient
         colors={isDark ? ['rgba(0,0,0,0.5)', 'transparent'] : ['rgba(0,0,0,0.15)', 'transparent']}
@@ -195,8 +213,16 @@ function DreamCardContent({ dream, accent, gradColors, titleSlide, bodyFade, car
         pointerEvents="none"
       />
 
-      {/* Center dream content */}
-      <View style={cdSt.center}>
+      {/* Center dream content — scrollable */}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={cdSt.center}
+        showsVerticalScrollIndicator={false}
+        onScrollBeginDrag={onScrollBegin}
+        onMomentumScrollEnd={onScrollEnd}
+        onScrollEndDrag={onScrollEnd}
+        scrollEventThrottle={16}
+      >
         {/* Orb */}
         <View style={[cdSt.orbShadow, { shadowColor: accent }]}>
           <View style={[cdSt.orb, { backgroundColor: accent }]}>
@@ -210,8 +236,7 @@ function DreamCardContent({ dream, accent, gradColors, titleSlide, bodyFade, car
         </Animated.View>
 
         {/* Title */}
-        <Animated.Text style={[cdSt.title, { color: isDark ? '#f5f3ff' : '#1e1b4b', transform: [{ translateY: titleSlide }] }]}
-          numberOfLines={3}>
+        <Animated.Text style={[cdSt.title, { color: isDark ? '#f5f3ff' : '#1e1b4b', transform: [{ translateY: titleSlide }] }]}>
           {dream.title}
         </Animated.Text>
 
@@ -223,13 +248,13 @@ function DreamCardContent({ dream, accent, gradColors, titleSlide, bodyFade, car
         {/* Insight */}
         <Animated.View style={[cdSt.block, { opacity: bodyFade }]}>
           <Text style={[cdSt.label, { color: accent }]}>Insight</Text>
-          <Text style={[cdSt.body, { color: isDark ? 'rgba(196,181,253,0.88)' : '#3b0764' }]} numberOfLines={4}>{dream.insight}</Text>
+          <Text style={[cdSt.body, { color: isDark ? 'rgba(196,181,253,0.88)' : '#3b0764' }]}>{dream.insight}</Text>
         </Animated.View>
 
         {/* Action */}
-        <Animated.View style={[cdSt.block, { opacity: bodyFade, marginTop: 14 }]}>
+        <Animated.View style={[cdSt.block, { opacity: bodyFade, marginTop: 18 }]}>
           <Text style={[cdSt.label, { color: isDark ? '#86efac' : '#059669' }]}>Action</Text>
-          <Text style={[cdSt.body, { color: isDark ? '#bbf7d0' : '#065f46' }]} numberOfLines={2}>{dream.action}</Text>
+          <Text style={[cdSt.body, { color: isDark ? '#bbf7d0' : '#065f46' }]}>{dream.action}</Text>
         </Animated.View>
 
         {/* BrainExtension watermark — always visible on share */}
@@ -242,14 +267,15 @@ function DreamCardContent({ dream, accent, gradColors, titleSlide, bodyFade, car
             <Text style={[cdSt.watermarkSub, { color: isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.38)' }]}>Cognitive Dream Journal</Text>
           </View>
         </Animated.View>
-      </View>
+      </ScrollView>
     </View>
   );
 }
 const cdSt = StyleSheet.create({
   center: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
+    alignItems: 'center',
     paddingTop: 110, paddingBottom: 100,
+    flexGrow: 1, justifyContent: 'center',
   },
   orbShadow: {
     shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.75,
@@ -283,6 +309,7 @@ const cdSt = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 10,
     marginTop: 22, paddingHorizontal: 28,
   },
+
   watermarkOrb: {
     width: 28, height: 28, borderRadius: 14,
     alignItems: 'center', justifyContent: 'center',
@@ -345,6 +372,12 @@ export default function DreamsScreen({ onBack, startIndex = 0, initialDreams, se
   const [muted, setMuted] = useState(false);
   const [sharing, setSharing] = useState(false);
 
+  // Refs for pause-on-scroll
+  const progressValueRef = useRef(0);
+  const isPausedRef = useRef(false);
+  const curIdxRef = useRef(startIndex);
+  const dreamsLenRef = useRef(0);
+
   const progressAnim = useRef(new Animated.Value(0)).current;
   const cardFade = useRef(new Animated.Value(1)).current;
   const titleSlide = useRef(new Animated.Value(40)).current;
@@ -352,6 +385,18 @@ export default function DreamsScreen({ onBack, startIndex = 0, initialDreams, se
   const cardRef = useRef<View>(null);
   const soundRef = useRef<any>(null);
   const timerRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  // ── Keep refs in sync ─────────────────────────────────────────────────────
+  useEffect(() => { dreamsLenRef.current = dreams.length; }, [dreams.length]);
+  useEffect(() => { curIdxRef.current = currentIndex; }, [currentIndex]);
+
+  // Track animated progress value
+  useEffect(() => {
+    const listenerId = progressAnim.addListener(({ value }) => {
+      progressValueRef.current = value;
+    });
+    return () => progressAnim.removeListener(listenerId);
+  }, [progressAnim]);
 
   // ── Fetch data (or use pre-sorted list from HomeScreen) ───────────────────
   useEffect(() => {
@@ -437,9 +482,34 @@ export default function DreamsScreen({ onBack, startIndex = 0, initialDreams, se
   useEffect(() => {
     if (stage !== 'story' || dreams.length === 0) { return; }
     runEntrance();
+    isPausedRef.current = false;
     startTimer(currentIndex, dreams.length);
+    const dream = dreams[currentIndex];
+    if (dream) { markDreamAsSeen(dream.id); }
     return () => { timerRef.current?.stop(); };
   }, [currentIndex, stage, dreams.length, runEntrance, startTimer]);
+
+  // ── Scroll pause / resume — lets user read without timer advancing ──────────
+  const handleScrollBegin = useCallback(() => {
+    if (isPausedRef.current) return;
+    timerRef.current?.stop();
+    isPausedRef.current = true;
+  }, []);
+
+  const handleScrollEnd = useCallback(() => {
+    if (!isPausedRef.current) return;
+    isPausedRef.current = false;
+    const idx = curIdxRef.current;
+    const total = dreamsLenRef.current;
+    const remaining = Math.max(500, (1 - progressValueRef.current) * 7000);
+    timerRef.current = Animated.timing(progressAnim, {
+      toValue: 1, duration: remaining, easing: Easing.linear, useNativeDriver: false,
+    });
+    timerRef.current.start(({ finished }) => {
+      if (!finished) return;
+      if (idx < total - 1) { setCurrentIndex(i => i + 1); } else { onBack(); }
+    });
+  }, [progressAnim, onBack]);
 
   // ── Navigate ───────────────────────────────────────────────────────────────
   const goPrev = useCallback(() => {
@@ -533,13 +603,12 @@ export default function DreamsScreen({ onBack, startIndex = 0, initialDreams, se
             bodyFade={bodyFade}
             cardRef={cardRef as React.RefObject<View>}
             isDark={isDark}
+            bgIndex={currentIndex % BG_IMAGES.length}
+            onScrollBegin={handleScrollBegin}
+            onScrollEnd={handleScrollEnd}
           />
         )}
       </Animated.View>
-
-      {/* Touch zones — prev (left 33%) / next (right 67%) */}
-      <TouchableOpacity style={ss.touchLeft}  onPress={goPrev} activeOpacity={1} />
-      <TouchableOpacity style={ss.touchRight} onPress={goNext} activeOpacity={1} />
 
       {/* Chrome overlay (progress, controls) — always on top */}
       <SafeAreaView style={ss.chrome} pointerEvents="box-none">
@@ -573,12 +642,19 @@ export default function DreamsScreen({ onBack, startIndex = 0, initialDreams, se
           </View>
         </View>
 
-        {/* Bottom bar — Skip only now, Share moved to top */}
+        {/* Bottom bar — Prev / Skip */}
         <View style={ss.bottomBar}>
-          <View />
+          <TouchableOpacity
+            style={[ss.navArrowBtn, currentIndex === 0 && { opacity: 0.3 }]}
+            onPress={goPrev}
+            disabled={currentIndex === 0}
+            activeOpacity={0.8}>
+            <Text style={ss.navArrowTxt}>{'‹'}</Text>
+          </TouchableOpacity>
+          <View style={{ flex: 1 }} />
           <TouchableOpacity style={ss.skipBtn} onPress={goNext} activeOpacity={0.8}>
             <Text style={ss.skipTxt}>
-              {currentIndex >= dreams.length - 1 ? 'Finish' : 'Skip'}
+              {currentIndex >= dreams.length - 1 ? 'Finish' : 'Skip ›'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -595,31 +671,30 @@ const ss = StyleSheet.create({
   card: { ...StyleSheet.absoluteFillObject, zIndex: 0 },
   chrome: { ...StyleSheet.absoluteFillObject, zIndex: 10 },
 
-  touchLeft:  { position: 'absolute', left: 0,   top: '18%', width: '33%', height: '58%', zIndex: 6 },
-  touchRight: { position: 'absolute', right: 0,  top: '18%', width: '67%', height: '58%', zIndex: 6 },
+
 
   topBar: {
     flexDirection: 'row', alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 14, paddingTop: 8,
+    paddingHorizontal: 16, paddingTop: 8,
   },
-  topRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  topRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   muteRow: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: 'rgba(0,0,0,0.32)', borderRadius: 20,
-    paddingHorizontal: 10, paddingVertical: 5,
+    backgroundColor: 'rgba(0,0,0,0.36)', borderRadius: 22,
+    paddingHorizontal: 12, paddingVertical: 6,
   },
   muteIcon: { fontSize: 14 },
-  counter: { color: 'rgba(255,255,255,0.68)', fontSize: 12, fontWeight: '600', letterSpacing: 0.4 },
+  counter: { color: 'rgba(255,255,255,0.68)', fontSize: 12, fontWeight: '600', letterSpacing: 0.5 },
   closeBtn: {
-    width: 34, height: 34, borderRadius: 17,
-    backgroundColor: 'rgba(0,0,0,0.38)', alignItems: 'center', justifyContent: 'center',
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.42)', alignItems: 'center', justifyContent: 'center',
   },
   closeIcon: { color: 'rgba(255,255,255,0.82)', fontSize: 13 },
   shareIconBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)',
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.32)',
     alignItems: 'center', justifyContent: 'center',
   },
   shareIcon: { color: '#fff', fontSize: 18, fontWeight: '700' },
@@ -632,17 +707,25 @@ const ss = StyleSheet.create({
   },
   shareBtn: {
     backgroundColor: 'rgba(255,255,255,0.13)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)',
-    borderRadius: 24, paddingHorizontal: 18, paddingVertical: 10,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.28)',
+    borderRadius: 24, paddingHorizontal: 20, paddingVertical: 11,
   },
-  shareTxt: { color: '#fff', fontSize: 13, fontWeight: '700', letterSpacing: 0.3 },
+  shareTxt: { color: '#fff', fontSize: 13, fontWeight: '700', letterSpacing: 0.4 },
   skipBtn: {
-    backgroundColor: 'rgba(0,0,0,0.38)',
-    borderRadius: 20, paddingHorizontal: 18, paddingVertical: 10,
+    backgroundColor: 'rgba(0,0,0,0.42)',
+    borderRadius: 22, paddingHorizontal: 20, paddingVertical: 11,
   },
   skipTxt: { color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '700' },
+  navArrowBtn: {
+    backgroundColor: 'rgba(0,0,0,0.42)',
+    borderRadius: 22, width: 44, height: 44,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  navArrowTxt: { color: 'rgba(255,255,255,0.85)', fontSize: 26, fontWeight: '300', lineHeight: 30 },
 
-  errorMsg: { color: '#fca5a5', fontSize: 16, textAlign: 'center', marginBottom: 24, lineHeight: 24 },
-  errorBtn: { backgroundColor: '#7c3aed', borderRadius: 14, paddingHorizontal: 28, paddingVertical: 12 },
-  errorBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  errorMsg: { color: '#fca5a5', fontSize: 16, textAlign: 'center', marginBottom: 26, lineHeight: 25 },
+  errorBtn: { backgroundColor: '#7c3aed', borderRadius: 16, paddingHorizontal: 30, paddingVertical: 14 },
+  errorBtnText: { color: '#fff', fontWeight: '700', fontSize: 14, letterSpacing: -0.2 },
+
+
 });

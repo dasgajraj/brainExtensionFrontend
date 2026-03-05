@@ -195,9 +195,16 @@ export default function AgentScreen({ onBack }: AgentScreenProps) {
       {/* Header — identical structure to BrainAskScreen / NeuralGraphScreen */}
       <View style={[s.header, { borderBottomColor: t.border.subtle }]}>
         <TouchableOpacity
-          style={[s.headerBtn, { backgroundColor: t.background.surface, borderColor: t.border.default }]}
+          style={[s.headerBtn, {
+            backgroundColor: t.background.elevated,
+            ...Platform.select({
+              ios: { shadowColor: t.shadow.card.color, shadowOffset: { width: 0, height: 1 }, shadowOpacity: t.shadow.card.opacity * 0.5, shadowRadius: 3 },
+              android: { elevation: 2 },
+            }),
+          }]}
           onPress={screen !== 'MENU' ? exitSession : onBack}
-          activeOpacity={0.8}>
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          activeOpacity={0.75}>
           {screen !== 'MENU' ? <IcoX size={16} color={t.text.primary} /> : <IcoArrowLeft size={18} color={t.text.primary} />}
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
@@ -338,43 +345,43 @@ export default function AgentScreen({ onBack }: AgentScreenProps) {
 /* ── Styles ──────────────────────────────────────────────────────────────── */
 const s = StyleSheet.create({
   safe: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, gap: 12 },
-  headerBtn: { width: 38, height: 38, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 17, fontWeight: '800' },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, gap: 12 },
+  headerBtn: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
   headerSub: { fontSize: 10, letterSpacing: 0.8, marginTop: 1 },
-  authChip: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 10, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 5 },
+  authChip: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 12, paddingVertical: 6 },
   authDot: { width: 6, height: 6, borderRadius: 3 },
-  authLabel: { fontSize: 10, fontWeight: '700' },
+  authLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0.3 },
 
   // Menu / OTP
   center: { flex: 1, justifyContent: 'center', paddingHorizontal: 28 },
-  heroIcon: { alignSelf: 'center', width: 88, height: 88, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 22 },
-  heroTitle: { fontSize: 24, fontWeight: '800', textAlign: 'center', marginBottom: 8 },
-  heroSub: { fontSize: 14, textAlign: 'center', lineHeight: 21, marginBottom: 28 },
-  emailPill: { borderRadius: 14, borderWidth: 1, paddingVertical: 12, paddingHorizontal: 16, marginBottom: 24 },
-  emailLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 1.2, marginBottom: 4 },
-  emailValue: { fontSize: 14, fontWeight: '700' },
-  primaryBtn: { borderRadius: 14, paddingVertical: 15, alignItems: 'center', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.28, shadowRadius: 10, elevation: 6 },
-  primaryBtnTxt: { fontSize: 15, fontWeight: '700' },
+  heroIcon: { alignSelf: 'center', width: 92, height: 92, borderRadius: 26, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
+  heroTitle: { fontSize: 26, fontWeight: '800', textAlign: 'center', marginBottom: 10, letterSpacing: -0.5 },
+  heroSub: { fontSize: 14, textAlign: 'center', lineHeight: 22, marginBottom: 30 },
+  emailPill: { borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 14, paddingHorizontal: 18, marginBottom: 26 },
+  emailLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 1.4, marginBottom: 5 },
+  emailValue: { fontSize: 14, fontWeight: '700', letterSpacing: -0.1 },
+  primaryBtn: { borderRadius: 18, paddingVertical: 16, alignItems: 'center', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.28, shadowRadius: 10, elevation: 6 },
+  primaryBtnTxt: { fontSize: 15, fontWeight: '700', letterSpacing: -0.2 },
   btnInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  warnTxt: { fontSize: 12, textAlign: 'center', marginTop: 14, fontWeight: '600' },
-  otpInput: { fontSize: 30, borderRadius: 14, borderWidth: 1, paddingVertical: 16, paddingHorizontal: 20, marginBottom: 20, fontWeight: '900', letterSpacing: 14 },
-  cancelTouchable: { marginTop: 20, alignItems: 'center' },
+  warnTxt: { fontSize: 12, textAlign: 'center', marginTop: 16, fontWeight: '600' },
+  otpInput: { fontSize: 30, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 18, paddingHorizontal: 20, marginBottom: 22, fontWeight: '900', letterSpacing: 14 },
+  cancelTouchable: { marginTop: 22, alignItems: 'center' },
   cancelTxt: { fontSize: 13, fontWeight: '600' },
 
   // Active
-  connBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10 },
-  connText: { fontSize: 12, fontWeight: '700' },
+  connBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingVertical: 12 },
+  connText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.2 },
   connEmail: { fontSize: 11, flex: 1 },
-  composer: { borderRadius: 16, borderWidth: 1, padding: 14 },
-  commandInput: { borderRadius: 10, borderWidth: 1, padding: 12, minHeight: 72, fontSize: 14, marginBottom: 10 },
-  sendBtn: { borderRadius: 12, paddingVertical: 13, alignItems: 'center', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.22, shadowRadius: 8, elevation: 5 },
-  sendBtnTxt: { fontSize: 14, fontWeight: '700' },
-  logHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14, marginBottom: 6 },
-  logHeaderTxt: { fontSize: 9, fontWeight: '700', letterSpacing: 1.5 },
-  logBox: { flex: 1, borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 8 },
+  composer: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, padding: 16 },
+  commandInput: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, padding: 14, minHeight: 76, fontSize: 14, marginBottom: 12 },
+  sendBtn: { borderRadius: 16, paddingVertical: 14, alignItems: 'center', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.22, shadowRadius: 8, elevation: 5 },
+  sendBtnTxt: { fontSize: 14, fontWeight: '700', letterSpacing: -0.1 },
+  logHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16, marginBottom: 8 },
+  logHeaderTxt: { fontSize: 9, fontWeight: '700', letterSpacing: 1.6 },
+  logBox: { flex: 1, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 16, marginBottom: 8 },
   logEmpty: { fontSize: 12, fontStyle: 'italic' },
-  logLine: { fontSize: 11, marginBottom: 5, lineHeight: 16 },
-  disconnectBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', margin: 16, borderRadius: 13, borderWidth: 1.5, paddingVertical: 13, gap: 10 },
+  logLine: { fontSize: 11, marginBottom: 5, lineHeight: 17 },
+  disconnectBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', margin: 18, borderRadius: 16, borderWidth: 1.5, paddingVertical: 15, gap: 10 },
   disconnectTxt: { fontSize: 14, fontWeight: '700' },
 });

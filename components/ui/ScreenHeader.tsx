@@ -1,12 +1,12 @@
 /**
  * components/ui/ScreenHeader.tsx
  *
- * Reusable header bar for all screens.
- * Consistent back button, title, optional subtitle, optional right action.
+ * Premium reusable header bar. Clean, minimal, tactile.
+ * Back button with subtle surface tint, centered title, optional right action.
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { AppTokens } from '../../theme/tokens';
 import { IconArrowLeft, IconX } from './Icons';
 
@@ -15,9 +15,7 @@ interface ScreenHeaderProps {
   subtitle?: string;
   onBack: () => void;
   t: AppTokens;
-  /** Use X icon instead of arrow (for modals / close) */
   closeStyle?: boolean;
-  /** Optional element rendered on the right */
   rightElement?: React.ReactNode;
 }
 
@@ -41,7 +39,8 @@ export default function ScreenHeader({
           },
         ]}
         onPress={onBack}
-        activeOpacity={0.8}>
+        activeOpacity={0.7}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
         <BackIcon size={18} color={t.text.primary} />
       </TouchableOpacity>
       <View style={s.center}>
@@ -57,7 +56,7 @@ export default function ScreenHeader({
       {rightElement ? (
         <View style={s.right}>{rightElement}</View>
       ) : (
-        <View style={s.backBtn} />
+        <View style={s.placeholder} />
       )}
     </View>
   );
@@ -69,32 +68,46 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    gap: 12,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 14,
   },
   backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 14,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 3,
+      },
+      android: { elevation: 1 },
+    }),
   },
   center: {
     flex: 1,
   },
   title: {
-    fontSize: 17,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: 10,
-    letterSpacing: 0.8,
-    marginTop: 1,
+    fontSize: 11,
+    letterSpacing: 0.6,
+    marginTop: 2,
+    textTransform: 'uppercase',
   },
   right: {
-    minWidth: 38,
+    minWidth: 40,
     alignItems: 'flex-end',
+  },
+  placeholder: {
+    width: 40,
   },
 });

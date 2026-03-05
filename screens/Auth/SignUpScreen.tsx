@@ -196,7 +196,7 @@ const SignUpScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   banner: {
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   linkRow: {
     flexDirection: 'row',

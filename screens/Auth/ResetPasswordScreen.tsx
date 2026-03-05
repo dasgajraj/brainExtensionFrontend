@@ -278,10 +278,10 @@ const ResetPasswordScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   successBanner: {
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   errorBanner: {
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   strengthContainer: {
     flexDirection: 'row',

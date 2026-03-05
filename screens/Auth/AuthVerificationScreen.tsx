@@ -265,12 +265,12 @@ const styles = StyleSheet.create({
   otpCell: {
     width: 48,
     height: 60,
-    borderWidth: 1.5,
+    borderWidth: StyleSheet.hairlineWidth,
     textAlign: 'center',
     fontWeight: '700',
   },
   errorBanner: {
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   resendRow: {
     flexDirection: 'row',

@@ -11,9 +11,10 @@ import React, {
 } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, StatusBar,
-  ActivityIndicator, Animated, PanResponder,
+  ActivityIndicator, Animated, PanResponder, Modal, Platform,
   Dimensions, ScrollView,
 } from 'react-native';
+import WebView from 'react-native-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 import Svg, {
@@ -86,7 +87,7 @@ function runForceSimulation(
   rawNodes: GraphNode[],
   links: GraphLink[],
   W: number, H: number,
-  iterations = 220,
+  iterations = 150,
 ): SimNode[] {
   if (!rawNodes.length) return [];
 
@@ -229,6 +230,22 @@ function bezierMidpoint(
   return { x: qx, y: qy };
 }
 
+/* ── Shortest distance from point (px,py) to segment (ax,ay)-(bx,by) ────── */
+function distToSegment(
+  px: number, py: number,
+  ax: number, ay: number, bx: number, by: number,
+): number {
+  const dx = bx - ax; const dy = by - ay;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return Math.sqrt((px - ax) ** 2 + (py - ay) ** 2);
+  let t = ((px - ax) * dx + (py - ay) * dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  return Math.sqrt((px - (ax + t * dx)) ** 2 + (py - (ay + t * dy)) ** 2);
+}
+
+export type EdgeData = { src: string; tgt: string; totalStr: number; count: number };
+export type FilterType = 'all' | 'memory' | 'file' | 'answer';
+
 /* ── Node Detail Sheet ───────────────────────────────────────────────── */
 function NodeSheet({ node, links, allNodes, t, isDark, onClose }: {
   node: SimNode | null; links: GraphLink[]; allNodes: SimNode[];
@@ -249,15 +266,9 @@ function NodeSheet({ node, links, allNodes, t, isDark, onClose }: {
     }
   }, [node, slideAnim, fadeAnim]);
 
-  if (!node) return null;
-
-  const nc = getNodeColors(isDark);
-  const stats = computeNodeStats(node.id, links);
-  const isMemory = node.type === 'memory';
-  const colors = isMemory ? nc.memory : nc.file;
-
-  // Find connected nodes with names
+  // Find connected nodes — MUST be before any conditional return (Rules of Hooks)
   const connections = useMemo(() => {
+    if (!node) return [];
     const conns: { id: string; label: string; strength: number; direction: string }[] = [];
     const seen = new Set<string>();
     links.forEach(l => {
@@ -273,7 +284,14 @@ function NodeSheet({ node, links, allNodes, t, isDark, onClose }: {
       }
     });
     return conns.sort((a, b) => b.strength - a.strength);
-  }, [node.id, links, allNodes]);
+  }, [node?.id, links, allNodes]);
+
+  if (!node) return null;
+
+  const nc = getNodeColors(isDark);
+  const stats = computeNodeStats(node.id, links);
+  const isMemory = node.type === 'memory';
+  const colors = isMemory ? nc.memory : nc.file;
 
   return (
     <Animated.View style={[sheetSt.backdrop, { opacity: fadeAnim }]}>
@@ -358,7 +376,7 @@ function NodeSheet({ node, links, allNodes, t, isDark, onClose }: {
           <View style={[sheetSt.preview, { backgroundColor: t.background.input, borderColor: t.border.subtle }]}>
             <Text style={[sheetSt.previewLbl, { color: t.text.muted }]}>Content</Text>
             <Text style={[sheetSt.previewTxt, { color: t.text.secondary }]}>
-              {node.fullText.length > 280 ? node.fullText.slice(0, 280) + '...' : node.fullText}
+              {node.fullText}
             </Text>
           </View>
         </ScrollView>
@@ -398,14 +416,306 @@ const sheetSt = StyleSheet.create({
   previewTxt: { fontSize: 13, lineHeight: 20 },
 });
 
+/* ── Mermaid diagram renderer (WebView + mermaid CDN) ────────────── */
+function MermaidBlock({ code, isDark }: { code: string; isDark: boolean }) {
+  const bg = isDark ? '#0a0a14' : '#ffffff';
+  const html = `<!DOCTYPE html><html><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:${bg};display:flex;align-items:flex-start;justify-content:center;padding:10px;min-height:100vh}
+    .mermaid svg{max-width:100%!important;height:auto}
+  </style>
+</head><body>
+  <div class="mermaid">${code.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}</div>
+  <script>mermaid.initialize({startOnLoad:true,theme:'${isDark ? 'dark' : 'neutral'}',fontFamily:'sans-serif'});</script>
+</body></html>`;
+  return (
+    <View style={{ borderRadius: 14, overflow: 'hidden', marginVertical: 8 }}>
+      <WebView
+        source={{ html }}
+        style={{ height: 260 }}
+        scrollEnabled={false}
+        javaScriptEnabled
+        originWhitelist={['*']}
+      />
+    </View>
+  );
+}
+
+/* ── Rich text renderer with Mermaid block support ───────────────── */
+function RichContent({ text, t, isDark }: { text: string; t: T; isDark: boolean }) {
+  // Split into mermaid blocks and plain text
+  const parts: Array<{ type: 'text' | 'mermaid'; content: string }> = [];
+  const mermaidRe = /```mermaid\s*([\s\S]*?)```/g;
+  let lastIdx = 0;
+  let m: RegExpExecArray | null;
+  while ((m = mermaidRe.exec(text)) !== null) {
+    if (m.index > lastIdx) parts.push({ type: 'text', content: text.slice(lastIdx, m.index).trim() });
+    parts.push({ type: 'mermaid', content: m[1].trim() });
+    lastIdx = m.index + m[0].length;
+  }
+  if (lastIdx < text.length) parts.push({ type: 'text', content: text.slice(lastIdx).trim() });
+
+  return (
+    <>
+      {parts.map((p, i) =>
+        p.type === 'mermaid' ? (
+          <View key={i}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+              <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: isDark ? '#c084fc' : '#a855f7' }} />
+              <Text style={{ fontSize: 9, fontWeight: '700', letterSpacing: 1, color: isDark ? '#c084fc' : '#7c3aed', textTransform: 'uppercase' }}>
+                Diagram
+              </Text>
+            </View>
+            <MermaidBlock code={p.content} isDark={isDark} />
+          </View>
+        ) : (
+          <Text key={i} style={[sheetSt.previewTxt, { color: t.text.secondary }]}>{p.content}</Text>
+        ),
+      )}
+    </>
+  );
+}
+
+/* ── Memory full-detail modal ─────────────────────────────────────── */
+function MemoryModal({ node, links, allNodes, t, isDark, onClose }: {
+  node: SimNode | null; links: GraphLink[]; allNodes: SimNode[];
+  t: T; isDark: boolean; onClose: () => void;
+}) {
+  const nc = getNodeColors(isDark);
+  const colors = nc.memory;
+
+  const connections = useMemo(() => {
+    if (!node) return [];
+    const conns: { id: string; label: string; strength: number; direction: string }[] = [];
+    const seen = new Set<string>();
+    links.forEach(l => {
+      if (l.source === node.id && l.target !== node.id && !seen.has(l.target)) {
+        seen.add(l.target);
+        const target = allNodes.find(n => n.id === l.target);
+        if (target) conns.push({ id: l.target, label: target.label, strength: l.strength, direction: 'out' });
+      }
+      if (l.target === node.id && l.source !== node.id && !seen.has(l.source)) {
+        seen.add(l.source);
+        const source = allNodes.find(n => n.id === l.source);
+        if (source) conns.push({ id: l.source, label: source.label, strength: l.strength, direction: 'in' });
+      }
+    });
+    return conns.sort((a, b) => b.strength - a.strength);
+  }, [node?.id, links, allNodes]);
+
+  const stats = node ? computeNodeStats(node.id, links) : { inbound: 0, outbound: 0, selfLoop: 0, total: 0 };
+
+  return (
+    <Modal
+      visible={node != null}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: t.background.screen }}>
+        {/* Header */}
+        <View style={[mmSt.header, { borderBottomColor: t.border.subtle }]}>
+          <View style={[sheetSt.typePill, { backgroundColor: colors.bg }]}>
+            <View style={[sheetSt.typeDot, { backgroundColor: colors.fill }]} />
+            <Text style={[sheetSt.typeLabel, { color: colors.fill }]}>Memory</Text>
+          </View>
+          <Text style={[mmSt.title, { color: t.text.primary }]} numberOfLines={2}>
+            {node?.label}
+          </Text>
+          <TouchableOpacity onPress={onClose} style={[mmSt.closeBtn, { backgroundColor: t.background.input }]}>
+            <Text style={[mmSt.closeTxt, { color: t.text.muted }]}>✕</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
+          {/* Attributes grid */}
+          <View style={[mmSt.attrCard, { backgroundColor: t.background.elevated, borderColor: t.border.subtle }]}>
+            <Text style={[mmSt.sectionLabel, { color: t.text.muted }]}>Attributes</Text>
+            {[
+              { key: 'ID',     val: node?.id ?? '' },
+              { key: 'Type',   val: node?.type ?? '' },
+              { key: 'Group',  val: node?.group ?? '' },
+              { key: 'Weight', val: String(node?.val ?? 0) },
+            ].map(attr => (
+              <View key={attr.key} style={[mmSt.attrRow, { borderTopColor: t.border.subtle }]}>
+                <Text style={[mmSt.attrKey, { color: t.text.muted }]}>{attr.key}</Text>
+                <Text style={[mmSt.attrVal, { color: t.text.primary }]} selectable>{attr.val}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Stats */}
+          <View style={[sheetSt.statsWrap, { borderColor: t.border.subtle, marginBottom: 20 }]}>
+            {[
+              { val: connections.length, lbl: 'Connections', clr: colors.fill },
+              { val: stats.inbound,      lbl: 'Inbound',     clr: isDark ? '#c4b5fd' : '#7c3aed' },
+              { val: stats.outbound,     lbl: 'Outbound',    clr: isDark ? '#fbbf24' : '#d97706' },
+            ].map(s => (
+              <View key={s.lbl} style={sheetSt.statCell}>
+                <Text style={[sheetSt.statVal, { color: s.clr }]}>{s.val}</Text>
+                <Text style={[sheetSt.statLbl, { color: t.text.muted }]}>{s.lbl}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Connections list */}
+          {connections.length > 0 && (
+            <View style={[mmSt.attrCard, { backgroundColor: t.background.elevated, borderColor: t.border.subtle, marginBottom: 20 }]}>
+              <Text style={[mmSt.sectionLabel, { color: t.text.muted }]}>Connections</Text>
+              {connections.map((c, i) => (
+                <View key={c.id} style={[sheetSt.connRow, i > 0 && { borderTopWidth: 1, borderTopColor: t.border.subtle }]}>
+                  <View style={[sheetSt.connDir, {
+                    backgroundColor: c.direction === 'out'
+                      ? (isDark ? 'rgba(251,191,36,0.15)' : 'rgba(217,119,6,0.1)')
+                      : (isDark ? 'rgba(196,181,253,0.15)' : 'rgba(124,58,237,0.1)'),
+                  }]}>
+                    <Text style={[sheetSt.connDirText, {
+                      color: c.direction === 'out' ? (isDark ? '#fbbf24' : '#d97706') : (isDark ? '#c4b5fd' : '#7c3aed'),
+                    }]}>{c.direction === 'out' ? 'OUT' : 'IN'}</Text>
+                  </View>
+                  <Text style={[sheetSt.connLabel, { color: t.text.secondary }]} numberOfLines={1}>
+                    {c.label}
+                  </Text>
+                  <View style={[sheetSt.connStr, { backgroundColor: t.background.input }]}>
+                    <Text style={[sheetSt.connStrText, { color: t.text.muted }]}>{c.strength}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Full content with diagram support */}
+          <View style={[mmSt.attrCard, { backgroundColor: t.background.elevated, borderColor: t.border.subtle }]}>
+            <Text style={[mmSt.sectionLabel, { color: t.text.muted }]}>Content</Text>
+            {node ? (
+              <RichContent text={node.fullText} t={t} isDark={isDark} />
+            ) : null}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
+  );
+}
+const mmSt = StyleSheet.create({
+  header: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    paddingHorizontal: 18, paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth, flexWrap: 'wrap',
+  },
+  title: { flex: 1, fontSize: 18, fontWeight: '800', letterSpacing: -0.3, lineHeight: 24, marginTop: 2 },
+  closeBtn: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center', marginLeft: 4 },
+  closeTxt: { fontSize: 14, fontWeight: '700' },
+  attrCard: {
+    borderRadius: 16, borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6, marginBottom: 16,
+  },
+  sectionLabel: { fontSize: 9, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 12 },
+  attrRow: { flexDirection: 'row', paddingVertical: 10, borderTopWidth: StyleSheet.hairlineWidth, gap: 8 },
+  attrKey: { width: 58, fontSize: 11, fontWeight: '700', flexShrink: 0 },
+  attrVal: { flex: 1, fontSize: 12, lineHeight: 18 },
+});
+
+/* ── Edge detail bottom sheet ─────────────────────────────────────── */
+function EdgeSheet({ edge, allNodes, isDark, t, onClose }: {
+  edge: EdgeData | null; allNodes: SimNode[];
+  isDark: boolean; t: T; onClose: () => void;
+}) {
+  const slideAnim = useRef(new Animated.Value(500)).current;
+  const fadeAnim  = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (edge) {
+      Animated.parallel([
+        Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      ]).start();
+    } else {
+      slideAnim.setValue(500);
+      fadeAnim.setValue(0);
+    }
+  }, [edge, slideAnim, fadeAnim]);
+
+  if (!edge) return null;
+
+  const nc   = getNodeColors(isDark);
+  const src  = allNodes.find(n => n.id === edge.src);
+  const tgt  = allNodes.find(n => n.id === edge.tgt);
+  const srcColors = src?.type === 'memory' ? nc.memory : nc.file;
+  const tgtColors = tgt?.type === 'memory' ? nc.memory : nc.file;
+  const avgStr = edge.count > 1 ? Math.round(edge.totalStr / edge.count) : edge.totalStr;
+  const edgeColor = isDark ? '#6ee7b7' : '#059669';
+
+  return (
+    <Animated.View style={[sheetSt.backdrop, { opacity: fadeAnim }]}>
+      <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
+      <Animated.View style={[sheetSt.container, {
+        backgroundColor: t.background.screen,
+        borderColor: t.border.default,
+        transform: [{ translateY: slideAnim }],
+      }]}>
+        <View style={[sheetSt.handle, { backgroundColor: t.border.default }]} />
+
+        {/* Header row */}
+        <View style={sheetSt.topRow}>
+          <View style={[sheetSt.typePill, { backgroundColor: isDark ? 'rgba(110,231,183,0.15)' : 'rgba(5,150,105,0.1)' }]}>
+            <View style={[sheetSt.typeDot, { backgroundColor: edgeColor }]} />
+            <Text style={[sheetSt.typeLabel, { color: edgeColor }]}>Connection</Text>
+          </View>
+          <View style={{ flex: 1 }} />
+          <TouchableOpacity onPress={onClose}
+            style={[sheetSt.closeBtn, { backgroundColor: t.background.input }]}>
+            <Text style={[sheetSt.closeTxt, { color: t.text.muted }]}>X</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Source → Target */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+          <View style={[sheetSt.typePill, { backgroundColor: srcColors.bg, flex: 1 }]}>
+            <View style={[sheetSt.typeDot, { backgroundColor: srcColors.fill }]} />
+            <Text style={[sheetSt.connLabel, { color: t.text.primary }]} numberOfLines={2}>
+              {src?.label ?? edge.src}
+            </Text>
+          </View>
+          <Text style={{ color: edgeColor, fontSize: 20, fontWeight: '200' }}>{'→'}</Text>
+          <View style={[sheetSt.typePill, { backgroundColor: tgtColors.bg, flex: 1 }]}>
+            <View style={[sheetSt.typeDot, { backgroundColor: tgtColors.fill }]} />
+            <Text style={[sheetSt.connLabel, { color: t.text.primary }]} numberOfLines={2}>
+              {tgt?.label ?? edge.tgt}
+            </Text>
+          </View>
+        </View>
+
+        {/* Stats */}
+        <View style={[sheetSt.statsWrap, { borderColor: t.border.subtle }]}>
+          {[
+            { val: edge.count,  lbl: 'Links',       clr: edgeColor },
+            { val: edge.totalStr, lbl: 'Total Strength', clr: isDark ? '#c4b5fd' : '#7c3aed' },
+            { val: avgStr,      lbl: 'Avg Strength', clr: isDark ? '#fbbf24' : '#d97706' },
+          ].map(s => (
+            <View key={s.lbl} style={sheetSt.statCell}>
+              <Text style={[sheetSt.statVal, { color: s.clr }]}>{s.val}</Text>
+              <Text style={[sheetSt.statLbl, { color: t.text.muted }]}>{s.lbl}</Text>
+            </View>
+          ))}
+        </View>
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
 /* ── Force Graph Canvas — Blueprint / Architectural Style ─────────── */
-function ForceGraph({ simNodes, links, selectedId, onNodeTap, onBgTap, isDark }: {
+function ForceGraph({ simNodes, links, selectedId, onNodeTap, onEdgeTap, onBgTap, isDark, filterType }: {
   simNodes: SimNode[];
   links: GraphLink[];
   selectedId: string | null;
   onNodeTap: (n: SimNode) => void;
+  onEdgeTap: (e: EdgeData) => void;
   onBgTap: () => void;
   isDark: boolean;
+  filterType: FilterType;
 }) {
   const nc = getNodeColors(isDark);
   const edgePalette = isDark ? EDGE_PALETTE_DARK : EDGE_PALETTE_LIGHT;
@@ -416,14 +726,19 @@ function ForceGraph({ simNodes, links, selectedId, onNodeTap, onBgTap, isDark }:
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
 
+  // Ref so panResponder can access latest renderEdges without re-creating
+  const renderEdgesRef = useRef<EdgeData[]>([]);
+
   // Blueprint grid colors
   const gridColor = isDark ? 'rgba(100,120,180,0.06)' : 'rgba(80,100,160,0.05)';
   const gridMajor = isDark ? 'rgba(100,120,180,0.12)' : 'rgba(80,100,160,0.09)';
 
   // Node card dimensions — blueprint style
-  const NODE_W = 110;
-  const NODE_H = 44;
-  const NODE_HEADER_H = 16;
+  const NODE_W        = 128;  // all nodes same width
+  const NODE_H        = 44;   // file / answer height
+  const NODE_MEM_H    = 82;   // memory height (shows 3-line text preview)
+  const NODE_HEADER_H = 18;
+  const getH = (n: SimNode) => n.type === 'memory' ? NODE_MEM_H : NODE_H;
 
   function pDist(touches: any[]): number {
     const dx = touches[1].pageX - touches[0].pageX;
@@ -485,21 +800,54 @@ function ForceGraph({ simNodes, links, selectedId, onNodeTap, onBgTap, isDark }:
           let best = 999;
           simNodes.forEach(n => {
             // Hit test against rectangular node card
+            const nh = getH(n);
             const hw = NODE_W / 2 + 12;
-            const hh = NODE_H / 2 + 12;
+            const hh = nh / 2 + 12;
             if (Math.abs(n.x - gx) < hw && Math.abs(n.y - gy) < hh) {
               const d = Math.sqrt((n.x - gx) ** 2 + (n.y - gy) ** 2);
               if (d < best) { best = d; hit = n; }
             }
           });
-          if (hit) onNodeTap(hit); else onBgTap();
+          if (hit) {
+            onNodeTap(hit);
+          } else {
+            // Edge hit detection — find nearest edge within 20px
+            let edgeHit: EdgeData | null = null;
+            let edgeBest = 999;
+            renderEdgesRef.current.forEach(edge => {
+              const src = simNodes.find(n => n.id === edge.src);
+              const tgt = simNodes.find(n => n.id === edge.tgt);
+              if (!src || !tgt) return;
+              const dx = tgt.x - src.x;
+              const dy = tgt.y - src.y;
+              const angle = Math.atan2(dy, dx);
+              const halfW = NODE_W / 2; const halfH = getH(src) / 2;
+              const tgtHalfH = getH(tgt!) / 2;
+              const sx = Math.abs(Math.cos(angle)) * halfW > Math.abs(Math.sin(angle)) * halfH
+                ? src.x + Math.sign(Math.cos(angle)) * halfW
+                : src.x + (Math.sign(Math.sin(angle)) * halfH) / Math.tan(angle);
+              const sy = Math.abs(Math.cos(angle)) * halfW > Math.abs(Math.sin(angle)) * halfH
+                ? src.y + (Math.sign(Math.cos(angle)) * halfW) * Math.tan(angle)
+                : src.y + Math.sign(Math.sin(angle)) * halfH;
+              const tx = Math.abs(Math.cos(angle)) * halfW > Math.abs(Math.sin(angle)) * tgtHalfH
+                ? tgt!.x - Math.sign(Math.cos(angle)) * halfW
+                : tgt!.x - (Math.sign(Math.sin(angle)) * tgtHalfH) / Math.tan(angle);
+              const ty = Math.abs(Math.cos(angle)) * halfW > Math.abs(Math.sin(angle)) * tgtHalfH
+                ? tgt!.y - (Math.sign(Math.cos(angle)) * halfW) * Math.tan(angle)
+                : tgt!.y - Math.sign(Math.sin(angle)) * tgtHalfH;
+              const d = distToSegment(gx, gy, sx, sy, tx, ty);
+              if (d < 20 && d < edgeBest) { edgeBest = d; edgeHit = edge; }
+            });
+            if (edgeHit) onEdgeTap(edgeHit);
+            else onBgTap();
+          }
         }
       }
       lastPanPos.current = null;
       lastPinchDist.current = null;
       touchStartRef.current = null;
     },
-  }), [simNodes, onNodeTap, onBgTap]);
+  }), [simNodes, onNodeTap, onEdgeTap, onBgTap]);
 
   const maxStr = useMemo(() => Math.max(1, ...links.filter(l => l.source !== l.target).map(l => l.strength)), [links]);
 
@@ -516,7 +864,7 @@ function ForceGraph({ simNodes, links, selectedId, onNodeTap, onBgTap, isDark }:
 
   // Dedupe edges for rendering (combine A->B and B->A, skip self)
   const renderEdges = useMemo(() => {
-    const edgeMap = new Map<string, { src: string; tgt: string; totalStr: number; count: number }>();
+    const edgeMap = new Map<string, EdgeData>();
     links.forEach(l => {
       if (l.source === l.target) return;
       const key = [l.source, l.target].sort().join('|');
@@ -530,6 +878,8 @@ function ForceGraph({ simNodes, links, selectedId, onNodeTap, onBgTap, isDark }:
     });
     return Array.from(edgeMap.values());
   }, [links]);
+  // Keep ref in sync so panResponder can access without re-creating
+  renderEdgesRef.current = renderEdges;
 
   // Generate grid lines
   const gridLines = useMemo(() => {
@@ -581,14 +931,16 @@ function ForceGraph({ simNodes, links, selectedId, onNodeTap, onBgTap, isDark }:
             const dx = tgt.x - src.x;
             const dy = tgt.y - src.y;
             const angle = Math.atan2(dy, dx);
-            // Source exit point (edge of rect)
-            const srcEx = Math.abs(Math.cos(angle)) * NODE_W / 2 > Math.abs(Math.sin(angle)) * NODE_H / 2
-              ? { x: src.x + Math.sign(Math.cos(angle)) * NODE_W / 2, y: src.y + (Math.sign(Math.cos(angle)) * NODE_W / 2) * Math.tan(angle) }
-              : { x: src.x + (Math.sign(Math.sin(angle)) * NODE_H / 2) / Math.tan(angle), y: src.y + Math.sign(Math.sin(angle)) * NODE_H / 2 };
-            // Target entry point (edge of rect)
-            const tgtEx = Math.abs(Math.cos(angle)) * NODE_W / 2 > Math.abs(Math.sin(angle)) * NODE_H / 2
-              ? { x: tgt.x - Math.sign(Math.cos(angle)) * NODE_W / 2, y: tgt.y - (Math.sign(Math.cos(angle)) * NODE_W / 2) * Math.tan(angle) }
-              : { x: tgt.x - (Math.sign(Math.sin(angle)) * NODE_H / 2) / Math.tan(angle), y: tgt.y - Math.sign(Math.sin(angle)) * NODE_H / 2 };
+            const srcHH = getH(src) / 2;
+            const tgtHH = getH(tgt) / 2;
+            // Source exit point
+            const srcEx = Math.abs(Math.cos(angle)) * NODE_W/2 > Math.abs(Math.sin(angle)) * srcHH
+              ? { x: src.x + Math.sign(Math.cos(angle)) * NODE_W/2, y: src.y + (Math.sign(Math.cos(angle)) * NODE_W/2) * Math.tan(angle) }
+              : { x: src.x + (Math.sign(Math.sin(angle)) * srcHH) / Math.tan(angle), y: src.y + Math.sign(Math.sin(angle)) * srcHH };
+            // Target entry point
+            const tgtEx = Math.abs(Math.cos(angle)) * NODE_W/2 > Math.abs(Math.sin(angle)) * tgtHH
+              ? { x: tgt.x - Math.sign(Math.cos(angle)) * NODE_W/2, y: tgt.y - (Math.sign(Math.cos(angle)) * NODE_W/2) * Math.tan(angle) }
+              : { x: tgt.x - (Math.sign(Math.sin(angle)) * tgtHH) / Math.tan(angle), y: tgt.y - Math.sign(Math.sin(angle)) * tgtHH };
 
             const midX = (srcEx.x + tgtEx.x) / 2;
             const midY = (srcEx.y + tgtEx.y) / 2;
@@ -645,11 +997,14 @@ function ForceGraph({ simNodes, links, selectedId, onNodeTap, onBgTap, isDark }:
             const nodeType = node.type === 'memory' ? 'memory' : node.type === 'file' ? 'file' : 'answer';
             const colors = nc[nodeType];
             const isSelected = node.id === selectedId;
-            const isDimmed = selectedId != null && !(connectedIds?.has(node.id));
+            const isFilterDimmed = filterType !== 'all' && node.type !== filterType;
+            const isDimmed = isFilterDimmed || (selectedId != null && !(connectedIds?.has(node.id)));
+            const isMem = nodeType === 'memory';
 
-            const typeLabel = nodeType === 'memory' ? 'MEM' : nodeType === 'file' ? 'FILE' : 'ANS';
+            const typeLabel = isMem ? 'MEM' : nodeType === 'file' ? 'FILE' : 'ANS';
+            const nodeH = getH(node);
             const x = node.x - NODE_W / 2;
-            const y = node.y - NODE_H / 2;
+            const y = node.y - nodeH / 2;
 
             const cardBg = isDimmed
               ? (isDark ? 'rgba(20,20,30,0.4)' : 'rgba(240,240,250,0.5)')
@@ -658,13 +1013,21 @@ function ForceGraph({ simNodes, links, selectedId, onNodeTap, onBgTap, isDark }:
               ? (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)')
               : (isSelected ? colors.fill : (isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'));
 
+            // For memory nodes: split label across up to 2 lines (12 chars/line)
+            const labelLine1 = isMem ? truncLabel(node.label, 18) : truncLabel(node.label, 14);
+            const labelLine2 = isMem && node.label.length > 18 ? truncLabel(node.label.slice(18), 18) : null;
+            // 3-line text preview for memory nodes (10 chars/line in SVG font)
+            const preview1 = isMem ? truncLabel(node.fullText, 22) : null;
+            const preview2 = isMem && node.fullText.length > 22 ? truncLabel(node.fullText.slice(22), 22) : null;
+            const preview3 = isMem && node.fullText.length > 44 ? truncLabel(node.fullText.slice(44), 22) : null;
+
             return (
               <G key={node.id}>
                 {/* Selection highlight glow */}
                 {isSelected && (
                   <Rect
                     x={x - 4} y={y - 4}
-                    width={NODE_W + 8} height={NODE_H + 8}
+                    width={NODE_W + 8} height={nodeH + 8}
                     rx={8}
                     fill="none" stroke={colors.fill}
                     strokeWidth={1.5} strokeOpacity={0.3}
@@ -673,69 +1036,78 @@ function ForceGraph({ simNodes, links, selectedId, onNodeTap, onBgTap, isDark }:
                 )}
 
                 {/* Card body */}
-                <Rect
-                  x={x} y={y}
-                  width={NODE_W} height={NODE_H}
-                  rx={6}
-                  fill={cardBg}
-                  stroke={borderClr}
-                  strokeWidth={isSelected ? 1.5 : 0.8}
-                />
+                <Rect x={x} y={y} width={NODE_W} height={nodeH} rx={6}
+                  fill={cardBg} stroke={borderClr} strokeWidth={isSelected ? 1.5 : 0.8} />
 
-                {/* Header bar (colored stripe at top) */}
-                <Rect
-                  x={x} y={y}
-                  width={NODE_W} height={NODE_HEADER_H}
-                  rx={6}
+                {/* Header bar */}
+                <Rect x={x} y={y} width={NODE_W} height={NODE_HEADER_H} rx={6}
                   fill={isDimmed ? (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)') : colors.fill}
-                  fillOpacity={isDimmed ? 0.3 : 0.85}
-                />
-                {/* Bottom half of header (square corners overlap) */}
-                <Rect
-                  x={x} y={y + 6}
-                  width={NODE_W} height={NODE_HEADER_H - 6}
+                  fillOpacity={isDimmed ? 0.3 : 0.85} />
+                <Rect x={x} y={y + 6} width={NODE_W} height={NODE_HEADER_H - 6}
                   fill={isDimmed ? (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)') : colors.fill}
-                  fillOpacity={isDimmed ? 0.3 : 0.85}
-                />
+                  fillOpacity={isDimmed ? 0.3 : 0.85} />
 
                 {/* Type label in header */}
-                <SvgText
-                  x={x + 8} y={y + NODE_HEADER_H - 4}
-                  fontSize={7.5}
-                  fontWeight="800"
-                  letterSpacing={1}
-                  fill={isDimmed
-                    ? (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)')
-                    : colors.text}
-                >
+                <SvgText x={x + 8} y={y + NODE_HEADER_H - 4}
+                  fontSize={7.5} fontWeight="800" letterSpacing={1}
+                  fill={isDimmed ? (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)') : colors.text}>
                   {typeLabel}
                 </SvgText>
 
-                {/* Connection count badge in header */}
-                <SvgText
-                  x={x + NODE_W - 8} y={y + NODE_HEADER_H - 4}
-                  textAnchor="end"
-                  fontSize={7}
-                  fontWeight="700"
-                  fill={isDimmed
-                    ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)')
-                    : (isDark ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.8)')}
-                >
+                {/* Weight badge in header */}
+                <SvgText x={x + NODE_W - 8} y={y + NODE_HEADER_H - 4}
+                  textAnchor="end" fontSize={7} fontWeight="700"
+                  fill={isDimmed ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)') : (isDark ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.8)')}>
                   w:{node.val}
                 </SvgText>
 
-                {/* Node label in body area */}
-                <SvgText
-                  x={x + NODE_W / 2} y={y + NODE_HEADER_H + (NODE_H - NODE_HEADER_H) / 2 + 4}
-                  textAnchor="middle"
-                  fontSize={9}
-                  fontWeight="600"
-                  fill={isDimmed
-                    ? (isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)')
-                    : colors.label}
-                >
-                  {truncLabel(node.label, 16)}
-                </SvgText>
+                {isMem ? (
+                  /* Memory node: 2-line label + divider + 3-line text preview */
+                  <>
+                    <SvgText x={x + NODE_W / 2} y={y + NODE_HEADER_H + 12}
+                      textAnchor="middle" fontSize={9} fontWeight="700"
+                      fill={isDimmed ? (isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.1)') : colors.label}>
+                      {labelLine1}
+                    </SvgText>
+                    {labelLine2 && (
+                      <SvgText x={x + NODE_W / 2} y={y + NODE_HEADER_H + 22}
+                        textAnchor="middle" fontSize={9} fontWeight="700"
+                        fill={isDimmed ? (isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.1)') : colors.label}>
+                        {labelLine2}
+                      </SvgText>
+                    )}
+                    {/* Hairline divider */}
+                    <Line x1={x + 8} y1={y + NODE_HEADER_H + (labelLine2 ? 28 : 17)}
+                      x2={x + NODE_W - 8} y2={y + NODE_HEADER_H + (labelLine2 ? 28 : 17)}
+                      stroke={isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'} strokeWidth={0.5} />
+                    {/* Text preview lines */}
+                    {preview1 && (
+                      <SvgText x={x + 8} y={y + NODE_HEADER_H + (labelLine2 ? 38 : 27)}
+                        fontSize={7.5} fill={isDimmed ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)') : (isDark ? 'rgba(255,255,255,0.45)' : 'rgba(40,40,60,0.5)')}>
+                        {preview1}
+                      </SvgText>
+                    )}
+                    {preview2 && (
+                      <SvgText x={x + 8} y={y + NODE_HEADER_H + (labelLine2 ? 48 : 37)}
+                        fontSize={7.5} fill={isDimmed ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)') : (isDark ? 'rgba(255,255,255,0.4)' : 'rgba(40,40,60,0.45)')}>
+                        {preview2}
+                      </SvgText>
+                    )}
+                    {preview3 && (
+                      <SvgText x={x + 8} y={y + NODE_HEADER_H + (labelLine2 ? 58 : 47)}
+                        fontSize={7.5} fill={isDimmed ? (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)') : (isDark ? 'rgba(255,255,255,0.32)' : 'rgba(40,40,60,0.38)')}>
+                        {preview3}
+                      </SvgText>
+                    )}
+                  </>
+                ) : (
+                  /* File / Answer node: single centered label */
+                  <SvgText x={x + NODE_W / 2} y={y + NODE_HEADER_H + (NODE_H - NODE_HEADER_H) / 2 + 4}
+                    textAnchor="middle" fontSize={9} fontWeight="600"
+                    fill={isDimmed ? (isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)') : colors.label}>
+                    {truncLabel(node.label, 16)}
+                  </SvgText>
+                )}
               </G>
             );
           })}
@@ -831,6 +1203,9 @@ export default function NeuralGraphScreen({ onBack }: NeuralGraphScreenProps) {
   const [simNodes, setSimNodes] = useState<SimNode[]>([]);
   const [links, setLinks] = useState<GraphLink[]>([]);
   const [selectedNode, setSelectedNode] = useState<SimNode | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<EdgeData | null>(null);
+  const [selectedMemory, setSelectedMemory] = useState<SimNode | null>(null);
+  const [filterType, setFilterType] = useState<FilterType>('all');
   const [hasResult, setHasResult] = useState(false);
   const graphFade = useRef(new Animated.Value(0)).current;
 
@@ -838,18 +1213,27 @@ export default function NeuralGraphScreen({ onBack }: NeuralGraphScreenProps) {
     setLoading(true);
     setErrorMsg('');
     setSelectedNode(null);
+    setSelectedEdge(null);
+    setSelectedMemory(null);
+    setFilterType('all');
     setHasResult(false);
     graphFade.setValue(0);
     try {
       const res = await getGraph();
-      const nodes = runForceSimulation(res.data.nodes, res.data.links, GRAPH_W, GRAPH_H);
-      setSimNodes(nodes);
-      setLinks(res.data.links);
-      setHasResult(true);
-      Animated.timing(graphFade, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+      const rawNodes = res.data.nodes;
+      const rawLinks = res.data.links;
+      // Defer simulation to next tick — keeps loading spinner visible while
+      // the JS thread runs the layout algorithm (faster perceived response)
+      setTimeout(() => {
+        const nodes = runForceSimulation(rawNodes, rawLinks, GRAPH_W, GRAPH_H);
+        setSimNodes(nodes);
+        setLinks(rawLinks);
+        setHasResult(true);
+        setLoading(false);
+        Animated.timing(graphFade, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+      }, 30);
     } catch (e: any) {
       setErrorMsg(e?.message ?? 'Failed to load neural graph.');
-    } finally {
       setLoading(false);
     }
   }, [graphFade]);
@@ -948,9 +1332,20 @@ export default function NeuralGraphScreen({ onBack }: NeuralGraphScreenProps) {
               simNodes={simNodes}
               links={links}
               selectedId={selectedNode?.id ?? null}
-              onNodeTap={setSelectedNode}
-              onBgTap={() => setSelectedNode(null)}
+              onNodeTap={n => {
+                setSelectedEdge(null);
+                if (n.type === 'memory') {
+                  setSelectedNode(null);
+                  setSelectedMemory(n);
+                } else {
+                  setSelectedMemory(null);
+                  setSelectedNode(n);
+                }
+              }}
+              onEdgeTap={e => { setSelectedNode(null); setSelectedEdge(e); }}
+              onBgTap={() => { setSelectedNode(null); setSelectedEdge(null); }}
               isDark={isDark}
+              filterType={filterType}
             />
           </Animated.View>
         )}
@@ -968,16 +1363,18 @@ export default function NeuralGraphScreen({ onBack }: NeuralGraphScreenProps) {
         )}
 
         {/* Legend (top) */}
-        {hasResult && !selectedNode && (
-          <View style={styles.legendPos} pointerEvents="none">
+        {hasResult && !selectedNode && !selectedEdge && (
+          <View style={styles.legendPos}>
             <GraphLegend memCount={memCount} fileCount={fileCount}
               linkCount={links.filter(l => l.source !== l.target).length}
-              isDark={isDark} t={t} />
+              isDark={isDark} t={t}
+              activeFilter={filterType}
+              onTypeFilter={setFilterType} />
           </View>
         )}
 
         {/* Stats bar (bottom) */}
-        {hasResult && !selectedNode && (
+        {hasResult && !selectedNode && !selectedEdge && (
           <View style={styles.statsPos} pointerEvents="none">
             <StatsBar nodes={simNodes} links={links} isDark={isDark} t={t} />
           </View>
@@ -991,8 +1388,25 @@ export default function NeuralGraphScreen({ onBack }: NeuralGraphScreenProps) {
           onClose={() => setSelectedNode(null)} />
       )}
 
+      {/* Memory full-detail modal */}
+      <MemoryModal
+        node={selectedMemory}
+        links={links}
+        allNodes={simNodes}
+        t={t}
+        isDark={isDark}
+        onClose={() => setSelectedMemory(null)}
+      />
+
+      {/* Edge detail sheet */}
+      {selectedEdge && (
+        <EdgeSheet edge={selectedEdge} allNodes={simNodes}
+          isDark={isDark} t={t}
+          onClose={() => setSelectedEdge(null)} />
+      )}
+
       {/* FAB */}
-      {!selectedNode && (
+      {!selectedNode && !selectedEdge && (
         <View style={styles.fabWrap}>
           {errorMsg !== '' && (
             <Text style={[styles.errorText, { color: t.status.error }]}>{errorMsg}</Text>
